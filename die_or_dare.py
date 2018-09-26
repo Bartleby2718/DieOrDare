@@ -118,10 +118,7 @@ class BasicAI(AI):
         return odds_win, odds_draw, odds_lose, odds_unknown
 
 
-# User: id, name, time_created
-
 class Game(object):
-    # id, player_red, player_black, over, ended_reason, time_created, time_ended, winner, loser
     def __init__(self, player_red, player_black):
         self.player_red = player_red  # takes the red pile and gets to go first
         self.player_black = player_black
@@ -173,7 +170,6 @@ class Game(object):
 
 
 class Player(object):
-    # id, user_id, num_death, num_victory, done, my_turn, num_shout_done, num_shout_draw
     def __init__(self, name, decks=None):
         self.name = name
         self.num_death = 0
@@ -186,7 +182,6 @@ class Player(object):
 
 
 class Card(object):
-    # id, suit, rank, value, open
     def __init__(self, suit, colored, rank, value=None):
         self.suit = suit
         self.colored = colored
@@ -208,7 +203,6 @@ class Card(object):
 
 
 class Deck(object):
-    # id, player_id, deck_state
     def __init__(self, cards):
         self.state = 'unopened'
         self.cards = cards
@@ -244,19 +238,6 @@ class Duel(object):
             self.winner = self.player_red if loser == self.player_black else self.player_black
         elif loser is None:
             self.loser = self.player_red if loser == self.player_black else self.player_black
-
-
-# DuelState: id, state
-# draw, win/lose, done, aborted_by_done, aborted_by_forfeit
-
-# DeckState: id, name
-# unopened, in_duel
-
-# PlayerGame: id, player_id, game_id
-
-# DeckCard: id, deck_id, card_id, card_index
-
-# DeckDuel: id, deck_id, duel_id
 
 
 def main():
