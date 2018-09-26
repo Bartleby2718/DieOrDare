@@ -77,7 +77,7 @@ class BasicAI(AI):
 
     @staticmethod
     def get_chances(me, opponent):
-        """get chances of win, tie, lose in a 3-tuple
+        """get chances of winning, tying, losing, and unknown.
         :return: a 4-tuple containing the chances of winning, tying, losing, and unknown
         """
         # get the value of my delegate and the opponent's
@@ -248,20 +248,20 @@ def main():
     red_joker = Card(None, True, 'Joker', 13)
     black_joker = Card(None, False, 'Joker', 13)
     ranks = ['Ace', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King']
-    red_pile = [red_joker] + [Card(suit, True, rank, ranks.index(rank)) for suit in red_suits for rank in ranks]
-    black_pile = [black_joker] + [Card(suit, False, rank, ranks.index(rank)) for suit in black_suits for rank in ranks]
+    red_pile = [red_joker] + [Card(suit, True, rank, ranks.index(rank) + 1) for suit in red_suits for rank in ranks]
+    black_pile = [black_joker] + [Card(suit, False, rank, ranks.index(rank) + 1) for suit in black_suits for rank in ranks]
     piles = [red_pile, black_pile]
     deck_per_pile = 9
     card_per_deck = 3
 
-    print("Let's start DieOrDare! ")
+    print("Let's start DieOrDare!")
 
     # Initialize players with name validation
-    player1_name = '?'
+    player1_name = ''
     while not player1_name.isalnum():
         player1_name = input("Enter player 1's name: ")
     player1 = Player(player1_name)
-    player2_name = '?'
+    player2_name = ''
     while not player2_name.isalnum() or player1_name == player2_name:
         player2_name = input("Enter player 2's name: ")
     player2 = Player(player2_name)
