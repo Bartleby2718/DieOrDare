@@ -1,4 +1,3 @@
-import getpass
 import random
 
 
@@ -21,11 +20,17 @@ class Game(object):
 
 class Player(object):
     # id, user_id, num_death, num_victory, done, my_turn, num_shout_done, num_shout_draw
-    def __init__(self, name, num_death=0, num_victory=0, done=False, goes_first=False, num_shout_done=0,
-                 num_shout_draw=0):
-        pass
+    def __init__(self, name, num_death=0, num_victory=0, done=False, goes_first=False, num_shout_done=0, num_shout_draw=0, decks = []):
+        self.name = name
+        self.num_death = num_death
+        self.num_victory = num_victory
+        self.done = done
+        self.goes_first = goes_first
+        self.num_shout_done = num_shout_done
+        self.num_shout_draw = num_shout_draw
+        self.decks = decks
 
-    def shout_done(self):
+    def shout_done(self, decks):
         pass
 
     def shout_draw(self, deck):
@@ -39,26 +44,41 @@ class Player(object):
 
 class Card(object):
     # id, suit, rank, value, open
-    def __init__(self, suit, colored, rank, value=None, open=False):
-        pass
+    def __init__(self, suit, colored, rank, value=None, is_open=False):
+        self.suit = suit
+        self.colored = colored
+        self.rank = rank
+        self.value = value
+        self.is_open = is_open
 
-    pass
+    def __str__(self):
+        if self.is_open:
+            if suit is None:
+                return 'Colored Joker' if self.colored else 'Black Joker'
+            else:
+                return '{} of {}'.format(rank, suit)
 
 
 class Deck(object):
     # id, player_id, deck_state
-    def __init__(self, player, state):
-        pass
+    def __init__(self, player, state, cards):
+        self.player = player
+        self.state = state
+        self.cards = cards
 
+    def __str__(self):
+        return ' / '.join(cards)
     pass
 
 
 class Duel(object):
     # id, ended_in_draw, winner_id
     def __init__(self, player1_deck, player2_deck, state='unopened', ended_in_draw=False, winner=None):
-        pass
-
-    pass
+        self.player1_deck = player1_deck
+        self.player2_deck = player1_deck
+        self.state = state
+        self.ended_in_draw = ended_in_draw
+        self.winner = winner
 
 
 # class DeckState(object):
@@ -83,76 +103,98 @@ class DeckDuel(object):
     pass
 
 
+def check_done(decks):
+  pass
+
+def check_draw(deck):
+  
 # initialize basic variables
-black_suits = ['spades', 'clubs']
-red_suits = ['hearts', 'diamonds']
+black_suits = ['Spades', 'Clubs']
+red_suits = ['Hearts', 'Diamonds']
 suits = black_suits + red_suits
 # TODO: AI Issue #1
-black_joker = Card(None, True, 'joker', 13)
-red_joker = Card(None, False, 'joker', 13)
+black_joker = Card(None, True, 'Joker', 13)
+red_joker = Card(None, False, 'Joker', 13)
 ranks = ['Ace', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King']
 red_pile = [red_joker] + [Card(suit, True, rank, value) for suit in suits for rank in ranks for value in range(1, 14)]
 black_pile = [black_joker] + [Card(suit, False, rank, value) for suit in suits for rank in ranks for value in
                               range(1, 14)]
-piles = [red_pile, black_pile]
-deck_state = ['unopened', 'in_duel', 'open']
+piles = [black_pile, red_pile]
+deck_state = ['unopened', 'in_duel', 'is_open']
 deck_per_pile = 9
 card_per_deck = 3
 
-print("Let's start DieOrDare!: ")
+print("Let's start DieOrDare! ")
 
 # TODO: initialize players with name validation
-player1_name = None
+player1_name = '?'
 while not player1_name.isalnum():
     player1_name = input("Enter player 1's name: ")
 player1 = Player(player1_name)
-player2_name = None
-while not player2_name.isalnum():
+player2_name = '?'
+while not player2_name.isalnum() or player1_name==player2_name:
     player2_name = input("Enter player 2's name: ")
 player2 = Player(player2_name)
 players = [player1, player2]
+print()
+print("All right, {} and {}. Let's get started!".format(player1_name, player2_name))
 
 # decide which buttons to use for player 1
-player1_dare_character = None
-while not player1_dare_character.isalnum():
+print("{}(Player 1), let's decide which buttons to use.".format(player1_name))
+player1_characters = []
+characters = []
+player1_dare_character = '?'
+while not player1_dare_character.isalnum() or player1_dare_character in characters:
     player1_dare_character = input('Which button will you use to indicate dare?')
-characters = [player1_dare_character]
-player1_die_character = None
-while not player1_die_character.isalnum or player1_die_character in characters:
-    player1_ = input('Which button will you use to indicate die?')
+player1_characters.append(player1_dare_character)
+characters.append(player1_dare_character)
+player1_die_character = '?'
+while not player1_die_character.isalnum() or player1_die_character in characters:
+    player1_die_character = input('Which button will you use to indicate die?')
+player1_characters.append(player1_die_character)
 characters.append(player1_die_character)
-player1_done_chracter = None
-while not player1_done_character.isalnum or player1_done_character in characters:
+player1_done_character = '?'
+while not player1_done_character.isalnum() or player1_done_character in characters:
     player1_done_character = input('Which button will you use to indicate done?')
+player1_characters.append(player1_done_character)
 characters.append(player1_done_character)
-player1_draw_character = None
+player1_draw_character = '?'
 while not player1_draw_character.isalnum() or player1_draw_character in characters:
     player1_draw_character = input('Which button will you use to indicate draw?')
+player1_characters.append(player1_draw_character)
 characters.append(player1_draw_character)
-player1_characters =
-import copy copy.copy()
+
 # decide which buttons to use for player 2
-player2_dare_character = None
+print()
+print("{}(Player 2), let's decide which buttons to use.".format(player2_name))
+player2_characters = []
+player2_dare_character = '?'
 while not player2_dare_character.isalnum() or player2_dare_character in characters:
     player2_dare_character = input('Which button will you use to indicate dare?')
+player2_characters.append(player2_dare_character)
 characters.append(player2_dare_character)
-player2_die_character = None
-while not player2_die_character.isalnum or player2_die_character in characters:
-    player2_ = input('Which button will you use to indicate die?')
+player2_die_character = '?'
+while not player2_die_character.isalnum() or player2_die_character in characters:
+    player2_die_character = input('Which button will you use to indicate die?')
+player2_characters.append(player2_die_character)
 characters.append(player2_die_character)
-player2_done_chracter = None
-while not player2_done_character.isalnum or player2_done_character in characters:
+player2_done_character = '?'
+while not player2_done_character.isalnum() or player2_done_character in characters:
     player2_done_character = input('Which button will you use to indicate done?')
+player2_characters.append(player2_done_character)
 characters.append(player2_done_character)
-player2_draw_character = None
+player2_draw_character = '?'
 while not player2_draw_character.isalnum() or player2_draw_character in characters:
     player2_draw_character = input('Which button will you use to indicate draw?')
+player2_characters.append(player2_draw_character)
 characters.append(player2_draw_character)
 
 players = [player1, player2]
 # TODO: toss a coin to decide who takes the red pile and gets to go first
-# blah b
-player1.goes_first = True
+if random.random() > .5:
+    player1.goes_first = True
+else:
+    player2.goes_first = True
 players.sort(key=lambda x: x.goes_first)
 
 # TODO: draw cards to form 9 decks for each player
@@ -169,10 +211,15 @@ for player in players:
             player.open_card(deck[-1])
         # TODO: sort decks based on the biggest number
 
+duel_index = 0
+game_over = False
 # TODO: start duel
-# Your heads are:
-# The opponent's heads are:
+while not game_over:
+    duel_index += 1
+    print('Starting Duel {}...'.format(duel_index))
+# Your delegates are:
 # Choose one of your deck
+# The opponent's delegates are:
 # Choose one of the opponent's deck
 # print(Duel )
 
