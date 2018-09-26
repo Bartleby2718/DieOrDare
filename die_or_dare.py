@@ -68,7 +68,7 @@ class Deck(object):
 
     def __str__(self):
         return ' / '.join(cards)
-    pass
+
 
 
 class Duel(object):
@@ -88,25 +88,29 @@ class Duel(object):
 #     pass
 
 
-class PlayerGame(object):
+# class PlayerGame(object):
     # id, player_id, game_id
-    pass
+    # pass
 
 
-class DeckCard(object):
+# class DeckCard(object):
     # id, deck_id, card_id, card_index
-    pass
+    # pass
 
 
-class DeckDuel(object):
+# class DeckDuel(object):
     # id, deck_id, duel_id
-    pass
+    # pass
 
 
 def check_done(decks):
+    values = []
+    for deck in decks:
+        dor card in deck
   pass
 
 def check_draw(deck):
+    pass
   
 # initialize basic variables
 black_suits = ['Spades', 'Clubs']
@@ -203,13 +207,16 @@ for player in players:
         random.shuffle(pile)
         decks = []
         for deck_index in range(deck_per_pile):
-            deck = []
+            cards = []
             for card_index in range(card_per_deck):
-                deck.append(pile.pop())
+                cards.append(pile.pop())
             # TODO: AI Issue #2
-            deck.sort(key=lambda x: x.value)
-            player.open_card(deck[-1])
+            cards.sort(key=lambda x: x.value)
+            player.open_card(cards[-1])
+            new_deck = Deck(player, 'unopened', cards)
+            decks. append(new_deck)
         # TODO: sort decks based on the biggest number
+        decks.sort(key=lambda x:(x.cards[-1].value, x.cards[-1].suit)
 
 duel_index = 0
 game_over = False
@@ -217,7 +224,7 @@ game_over = False
 while not game_over:
     duel_index += 1
     print('Starting Duel {}...'.format(duel_index))
-# Your delegates are:
+    print('Your delegates are:')
 # Choose one of your deck
 # The opponent's delegates are:
 # Choose one of the opponent's deck
