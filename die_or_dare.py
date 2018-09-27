@@ -62,7 +62,7 @@ class BasicAI(AI):
 
     @staticmethod
     def decide_deck_order(decks):
-        decks.sort(key=lambda x: (x.cards[0].value, x.cards[0].suit))
+        decks.sort(key=lambda x: x.delegate().value)
         return decks
 
     @classmethod
@@ -304,11 +304,11 @@ def main():
             cards = []
             for k in range(CARD_PER_DECK):
                 cards.append(pile.pop())
-            cards.sort(key=lambda x: (-x.value, x.suit))
+            cards.sort(key=lambda x: -x.value)
             new_deck = Deck(cards)
             new_deck.reveal_delegate()
             decks.append(new_deck)
-        decks.sort(key=lambda x: (x.cards[0].value, x.cards[0].suit))
+        decks.sort(key=lambda x: x.delegate().value)
         player.decks = decks
 
     # The Duels start
