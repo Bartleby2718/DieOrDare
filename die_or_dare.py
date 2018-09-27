@@ -242,17 +242,17 @@ class Duel(object):
 
 def main():
     # Setup
-    black_suits = ['Spades', 'Clubs']
-    red_suits = ['Hearts', 'Diamonds']
+    BLACK_SUITS = ['Spades', 'Clubs']
+    RED_SUITS = ['Hearts', 'Diamonds']
     # TODO: 일단 13으로 고정
     red_joker = Card(None, True, 'Joker', 13)
     black_joker = Card(None, False, 'Joker', 13)
-    ranks = ['Ace', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King']
-    red_pile = [red_joker] + [Card(suit, True, rank, ranks.index(rank) + 1) for suit in red_suits for rank in ranks]
-    black_pile = [black_joker] + [Card(suit, False, rank, ranks.index(rank) + 1) for suit in black_suits for rank in ranks]
+    RANKS = ['Ace', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King']
+    red_pile = [red_joker] + [Card(suit, True, rank, RANKS.index(rank) + 1) for suit in RED_SUITS for rank in RANKS]
+    black_pile = [black_joker] + [Card(suit, False, rank, RANKS.index(rank) + 1) for suit in BLACK_SUITS for rank in RANKS]
     piles = [red_pile, black_pile]
-    deck_per_pile = 9
-    card_per_deck = 3
+    DECK_PER_PILE = 9
+    CARD_PER_DECK = 3
 
     print("Let's start DieOrDare!")
 
@@ -300,9 +300,9 @@ def main():
         pile = piles[i]
         random.shuffle(pile)
         decks = []
-        for j in range(deck_per_pile):
+        for j in range(DECK_PER_PILE):
             cards = []
-            for k in range(card_per_deck):
+            for k in range(CARD_PER_DECK):
                 cards.append(pile.pop())
             cards.sort(key=lambda x: (-x.value, x.suit))
             new_deck = Deck(cards)
