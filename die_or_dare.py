@@ -210,12 +210,9 @@ class Deck(object):
     def __repr__(self):
         return ' / '.join([repr(card) for card in self.cards])
 
+    
     def delegate(self):
         return self.cards[0]
-
-    def reveal_delegate(self):
-        self.delegate().open_up()
-
 
 class Duel(object):
     def __init__(self, player_red, player_black, winner=None, loser=None):
@@ -306,7 +303,7 @@ def main():
                 cards.append(pile.pop())
             cards.sort(key=lambda x: -x.value)
             new_deck = Deck(cards)
-            new_deck.reveal_delegate()
+            new_deck.delegate().open_up()
             decks.append(new_deck)
         decks.sort(key=lambda x: x.delegate().value)
         player.decks = decks
