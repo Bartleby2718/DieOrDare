@@ -287,7 +287,7 @@ def main():
     if random.random() > .5:
         game = Game(player1, player2)
     else:
-        game = Game(player1, player2)
+        game = Game(player2, player1)
 
     # Draw cards to form 9 decks for each player and sort them based on the delegate's value
     for i in range(2):
