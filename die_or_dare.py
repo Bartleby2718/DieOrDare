@@ -291,7 +291,6 @@ def main():
 
     # Draw cards to form 9 decks for each player and sort them based on the delegate's value
     for i in range(2):
-        found_joker = False
         # red first
         player = game.players()[i]
         pile = piles[i]
