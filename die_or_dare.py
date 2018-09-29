@@ -140,8 +140,8 @@ class Game(object):
             for card in deck:
                 if card.value not in values:
                     values.append(card.value)
-        if len(values) == 13:
-            self.end('done', winner=player_shouted)
+        if len(values) == len(constants.RANKS):
+            self.end(constants.Action.DONE, winner=player_shouted)
         else:
             player_shouted.num_shout_done += 1
             if player_shouted.num_shout_done > 1:
@@ -151,11 +151,11 @@ class Game(object):
         player_red_deck_sum = sum([card.value for card in duel.player_red.deck])
         player_black_deck_sum = sum([card.value for card in duel.player_black.deck])
         if player_red_deck_sum == player_black_deck_sum:
-            duel.end('draw', winner=player_shouted)
+            duel.end(constants.DuelResult.DRAWN, winner=player_shouted)
         else:
             player_shouted.num_shout_draw += 1
             if player_shouted.num_shout_draw > 1:
-                self.end('forfeit_draw', loser=player_shouted)
+                self.end(constants.GameResult.FORFEITED_BY_DRAW, loser=player_shouted)
 
 
 class Player(object):
@@ -193,7 +193,7 @@ class Card(object):
 
 class Deck(object):
     def __init__(self, cards):
-        self.state = 'unopened'
+        self.state = constants.DeckState.UNOPENED
         self.cards = cards
 
     def __repr__(self):
@@ -207,11 +207,11 @@ class Duel(object):
     def __init__(self, player_red, player_black, winner=None, loser=None):
         self.player_red = player_red
         self.player_black = player_black
-        self.state = 'unopened'
         self.time_created = time.time()
         self.time_ended = None
         self.winner = winner
         self.loser = loser
+        self.result = None
 
     def end(self, state, winner=None, loser=None):
         self.state = state
@@ -228,16 +228,12 @@ class Duel(object):
 
 def main():
     # Setup
-    BLACK_SUITS = ['Spades', 'Clubs']
-    RED_SUITS = ['Hearts', 'Diamonds']
     red_joker = Card(None, True, 'Joker', 13)
     black_joker = Card(None, False, 'Joker', 13)
-    RANKS = ['Ace', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King']
-    red_pile = [red_joker] + [Card(suit, True, rank, RANKS.index(rank) + 1) for suit in RED_SUITS for rank in RANKS]
-    black_pile = [black_joker] + [Card(suit, False, rank, RANKS.index(rank) + 1) for suit in BLACK_SUITS for rank in RANKS]
+    ranks = constants.RANKS
+    red_pile = [red_joker] + [Card(suit, True, rank, ranks.index(rank) + 1) for suit in constants.RED_SUITS for rank in ranks]
+    black_pile = [black_joker] + [Card(suit, False, rank, ranks.index(rank) + 1) for suit in constants.BLACK_SUITS for rank in ranks]
     piles = [red_pile, black_pile]
-    DECK_PER_PILE = 9
-    CARD_PER_DECK = 3
 
     print("Let's start DieOrDare!")
 
@@ -254,7 +250,7 @@ def main():
 
     # Decide which buttons to use for player 1
     print("\n{}(Player 1), let's decide which buttons to use.".format(player1_name))
-    player1_characters_settings = {'dare': '', 'die': '', 'done': '', 'draw': ''}
+    player1_characters_settings = {constants.Action.DARE: '', constants.Action.DIE: '', constants.Action.DONE: '', constants.Action.DRAW: ''}
     for action in player1_characters_settings:
         character = player1_characters_settings.get(action)
         while not character.isalnum() or character in player1_characters_settings.values():
@@ -263,7 +259,7 @@ def main():
 
     # Decide which buttons to use for player 2
     print("\n{}(Player 2), let's decide which buttons to use.".format(player2_name))
-    player2_characters_settings = {'dare': '', 'die': '', 'done': '', 'draw': ''}
+    player2_characters_settings = {constants.Action.DARE: '', constants.Action.DIE: '', constants.Action.DONE: '', constants.Action.DRAW: ''}
     for action in player2_characters_settings:
         character = player2_characters_settings.get(action)
         used_characters = list(player1_characters_settings.values()) + list(player2_characters_settings.values())
@@ -284,9 +280,9 @@ def main():
         pile = piles[i]
         random.shuffle(pile)
         decks = []
-        for j in range(DECK_PER_PILE):
+        for j in range(constants.DECK_PER_PILE):
             cards = []
-            for k in range(CARD_PER_DECK):
+            for k in range(constants.CARD_PER_DECK):
                 cards.append(pile.pop())
             cards.sort(key=lambda x: -x.value)
             new_deck = Deck(cards)
@@ -313,19 +309,19 @@ def main():
         while not offense_valid_choice:
             print('\nThe delegates of your unopened decks are: ')
             for i, deck in enumerate(offense.decks):
-                if deck.state == 'unopened':
+                if deck.state == constants.DeckState.UNOPENED:
                     print('\tDeck {}: {}'.format(i + 1, deck.delegate()))
             print("The delegates of your opponent's unopened decks are: ")
             for i, deck in enumerate(defense.decks):
-                if deck.state == 'unopened':
+                if deck.state == constants.DeckState.UNOPENED:
                     print('\tDeck {}: {}'.format(i + 1, deck.delegate()))
             offense_deck_index = input('Choose one of your deck (Enter the deck number): ')
             try:
                 index = int(offense_deck_index) - 1
                 offense_deck = offense.decks[index]
-                if index >= 0 and offense_deck.state == 'unopened':
+                if index >= 0 and offense_deck.state == constants.DeckState.UNOPENED:
                     offense_valid_choice = True
-                    offense_deck.state = 'in_duel'
+                    offense_deck.state = constants.DeckState.IN_DUEL
                     offense.deck_in_duel = offense_deck
                 else:
                     print('Invalid input. Enter another number.')
@@ -338,15 +334,15 @@ def main():
             print('\nYou have chosen, as your deck, deck #', offense_deck_index, ': ', offense_deck)
             print("The delegates of your opponent's unopened decks are: ")
             for i, deck in enumerate(defense.decks):
-                if deck.state == 'unopened':
+                if deck.state == constants.DeckState.UNOPENED:
                     print('\tDeck {}: {}'.format(i + 1, deck.delegate()))
             defense_deck_index = input("Choose one of your opponent's deck (Enter the deck number): ")
             try:
                 index = int(defense_deck_index) - 1
                 defense_deck = defense.decks[index]
-                if index >= 0 and defense_deck.state == 'unopened':
+                if index >= 0 and defense_deck.state == constants.DeckState.UNOPENED:
                     defense_valid_choice = True
-                    defense_deck.state = 'in_duel'
+                    defense_deck.state = constants.DeckState.IN_DUEL
                     defense.deck_in_duel = defense_deck
                 else:
                     print('Invalid input. Enter another number.')
