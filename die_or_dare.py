@@ -5,7 +5,6 @@ import time
 
 class AI(abc.ABC):
     # 나중에 AI vs AI 해서 전략간 상성이나 최고의 전략을 알아내기 위함
-    @staticmethod
     @abc.abstractmethod
     def decide_joker_value(self, deck):
         """determine the value of joker
@@ -13,7 +12,6 @@ class AI(abc.ABC):
         """
         pass
 
-    @staticmethod
     @abc.abstractmethod
     def decide_delegate(self, deck):
         """determine the delegate, the card with the largest value in the deck
@@ -22,7 +20,6 @@ class AI(abc.ABC):
         """
         return deck
 
-    @staticmethod
     @abc.abstractmethod
     def decide_deck_order(self, decks):
         """determine the order of decks when more than two or more delegates--including a joker--has the same value
@@ -37,7 +34,6 @@ class AI(abc.ABC):
         :return: a boolean value indicating whether to die"""
         pass
 
-    @staticmethod
     @abc.abstractmethod
     def decide_shout_draw_timing(self, my_deck, opponent_deck):
         """determine when to shout Draw!"""
@@ -45,12 +41,10 @@ class AI(abc.ABC):
 
 
 class BasicAI(AI):
-    @staticmethod
-    def decide_joker_value(deck):
+    def decide_joker_value(self, deck):
         return 13
 
-    @staticmethod
-    def decide_delegate(deck):
+    def decide_delegate(self, deck):
         # TODO: test this
         random.shuffle(deck.cards)
         print(deck)
@@ -60,8 +54,7 @@ class BasicAI(AI):
         print(deck)
         return deck
 
-    @staticmethod
-    def decide_deck_order(decks):
+    def decide_deck_order(self, decks):
         decks.sort(key=lambda x: x.delegate().value)
         return decks
 
@@ -70,12 +63,10 @@ class BasicAI(AI):
         odds_lose = cls.get_chances(my_decks, opponent_decks)[2]
         return odds_lose > .5
 
-    @staticmethod
-    def decide_shout_draw_timing(my_deck, opponent_deck):
+    def decide_shout_draw_timing(self, my_deck, opponent_deck):
         # TODO: shout을 감지하는 걸 어떻게 구현할지 결정하기 전까지 일단 안 외침
         pass
 
-    @staticmethod
     def get_chances(me, opponent):
         """get chances of winning, tying, losing, and unknown.
         :return: a 4-tuple containing the chances of winning, tying, losing, and unknown
