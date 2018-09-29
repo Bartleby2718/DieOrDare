@@ -4,7 +4,6 @@ import time
 
 
 class AI(abc.ABC):
-    # 나중에 AI vs AI 해서 전략간 상성이나 최고의 전략을 알아내기 위함
     @abc.abstractmethod
     def decide_joker_value(self, deck):
         """determine the value of joker
@@ -64,7 +63,6 @@ class BasicAI(AI):
         return odds_lose > .5
 
     def decide_shout_draw_timing(self, my_deck, opponent_deck):
-        # TODO: shout을 감지하는 걸 어떻게 구현할지 결정하기 전까지 일단 안 외침
         pass
 
     def get_chances(me, opponent):
@@ -232,7 +230,6 @@ def main():
     # Setup
     BLACK_SUITS = ['Spades', 'Clubs']
     RED_SUITS = ['Hearts', 'Diamonds']
-    # TODO: 일단 13으로 고정
     red_joker = Card(None, True, 'Joker', 13)
     black_joker = Card(None, False, 'Joker', 13)
     RANKS = ['Ace', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King']
@@ -369,17 +366,7 @@ def main():
         print("{}'s deck #{}: {}".format(offense.name, offense_deck_index, offense_deck))
         print("{}'s deck #{}: {}".format(defense.name, defense_deck_index, defense_deck))
         print('\nWhat will you two do?')
-        # TODO: decide how to implement two users' input
-        # until then,
         break
-        # case 1: time limit("Your have n seconds to shout die, done, or draw.")
-        # -> identify the first valid action for either within the time frame
-        # -> check if the event actually happened
-        # case 2: catch keyboard input real-time
-        # -> identify the first valid action for each player
-        # -> halt if they 1) both dare, 2) one of them die/done/draw
-        # case 3: wait until they both input values and reveal what they did and compare index
-    # TODO: print ending statements
     print('Game!')
 
 
