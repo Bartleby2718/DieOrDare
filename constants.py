@@ -20,7 +20,7 @@ class DeckState(object):
 
 class DuelResult(object):
     DRAWN = 'Drawn'
-    GAME = ''Finished'
+    GAME = 'Finished'
     DONE = 'Done'
     ABORTED_BY_DONE = 'Aborted by done'
     ABORTED_BY_FORFEIT = 'Aborted by forfeit'
