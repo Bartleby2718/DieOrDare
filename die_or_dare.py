@@ -123,7 +123,7 @@ class Game(object):
         elif winner is None:
             self.winner = self.player_red if loser == self.player_black else self.player_black
         elif loser is None:
-            self.loser = self.player_red if loser == self.player_black else self.player_black
+            self.loser = self.player_red if winner == self.player_black else self.player_black
 
     def players(self):
         return [self.player_red, self.player_black]
@@ -217,7 +217,7 @@ class Duel(object):
         elif winner is None:
             self.winner = self.player_red if loser == self.player_black else self.player_black
         elif loser is None:
-            self.loser = self.player_red if loser == self.player_black else self.player_black
+            self.loser = self.player_red if winner == self.player_black else self.player_black
 
 
 def main():
