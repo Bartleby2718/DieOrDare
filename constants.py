@@ -32,7 +32,6 @@ class DuelResult(object):
     DIED = 'Died'
     ABORTED_BY_DONE = 'Aborted by done'
     ABORTED_BY_FORFEIT = 'Aborted by forfeit'
-    FORFEITED_BY_WRONG_DONE = 'Forfeited by wrong done'
 
 
 class GameResult(object):
