@@ -342,7 +342,7 @@ def main():
                                constants.Action.DRAW: ''}
         for action in player.key_settings:
             character = player.key_settings.get(action)
-            while not character.isalnum() or character in player.key_settings.values():
+            while not character.isalpha() or character in player.key_settings.values():
                 character = input('Which character will you use to indicate {}? '.format(action))
             player.key_settings[action] = character
 
