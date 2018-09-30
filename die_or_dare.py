@@ -13,59 +13,52 @@ class AI(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def decide_delegate(self, deck):
-        """determine the delegate, the card with the largest value in the deck
+    def decide_and_open_delegate(self, deck):
+        """determine the delegate, the card with the largest value in the deck, and open it
         :param deck: the deck in which a delegate has to be chosen
         :return: the same deck but with the delegate in the first of the cards
         """
         return deck
 
-    @abc.abstractmethod
-    def decide_deck_order(self, decks):
-        """determine the order of decks when more than two or more delegates--including a joker--has the same value
-        :param decks: a list of decks to sort
-        :return: the same list of decks, sorted in ascending order"""
-        return decks
-
     @classmethod
     @abc.abstractmethod
-    def decide_die_or_not(cls, my_decks, opponent_decks):
-        """determine whether you will shout die, considering the odds
+    def decide_action(cls, my_decks, opponent_decks):
+        """determine which action you will take, considering the odds
         :return: a boolean value indicating whether to die"""
         pass
 
     @abc.abstractmethod
-    def decide_shout_draw_timing(self, my_deck, opponent_deck):
-        """determine when to shout Draw!"""
+    def decide_deck_in_duel(self, my_decks, opponent_decks):
+        """determine which deck to put in a duel
+        :return: a 2-tuple of my deck and opponent's deck"""
         pass
 
 
 class BasicAI(AI):
     def decide_joker_value(self, deck):
-        return 13
+        return constants.HIGHEST_VALUE
 
-    def decide_delegate(self, deck):
-        # TODO: test this
-        random.shuffle(deck.cards)
-        print(deck)
-        first = deck.cards[0]
-        biggest = sorted(deck.cards, key=lambda x: x.value)[-1]
-        first, biggest = biggest, first
-        print(deck)
+    def decide_and_open_delegate(self, deck):
+        cards = deck.cards
+        random.shuffle(cards)
+        biggest_card = max(cards, key=lambda x: x.value)
+        biggest_card.open_up()
+        biggest_card_index = cards.index(biggest_card)  # zero-based
+        cards[0], cards[biggest_card_index] = cards[biggest_card_index], cards[0]
+        deck.cards = tuple(cards)
         return deck
 
-    def decide_deck_order(self, decks):
-        decks.sort(key=lambda x: x.delegate().value)
-        return decks
-
     @classmethod
-    def decide_die_or_not(cls, my_decks, opponent_decks):
+    def decide_action(cls, my_decks, opponent_decks):
         odds_lose = cls.get_chances(my_decks, opponent_decks)[2]
         return odds_lose > .5
 
-    def decide_shout_draw_timing(self, my_deck, opponent_deck):
+    @abc.abstractmethod
+    def decide_deck_in_duel(self, my_decks, opponent_decks):
+        """determine which deck to put in a duel"""
         pass
 
+    @staticmethod
     def get_chances(me, opponent):
         """get chances of winning, tying, losing, and unknown.
         :return: a 4-tuple containing the chances of winning, tying, losing, and unknown
