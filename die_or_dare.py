@@ -411,6 +411,8 @@ def main():
             offense_deck_input = input('Choose one of your deck (Enter the deck number): ')
             try:
                 offense_deck = offense.decks[int(offense_deck_input) - 1]
+                if offense_deck.state != constants.DeckState.UNOPENED or not (1 <= int(offense_deck_input) <= 9):
+                    raise ValueError
             except (ValueError, IndexError):
                 print('Invalid input. Enter another number.')
             else:
@@ -423,6 +425,8 @@ def main():
             defense_deck_input = input("Choose one of your opponent's deck (Enter the deck number): ")
             try:
                 defense_deck = defense.decks[int(defense_deck_input) - 1]
+                if offense_deck.state != constants.DeckState.UNOPENED or not (1 <= int(offense_deck_input) <= 9):
+                    raise ValueError
             except (ValueError, IndexError):
                 print('Invalid input. Enter another number.')
             else:
