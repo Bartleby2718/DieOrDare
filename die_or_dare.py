@@ -194,6 +194,19 @@ class Player(object):
         self.pile = None
         self.key_settings = None
 
+    def print_statistics(self):
+        statistics = {
+            'Number of duels {} won'.format(self.name):
+                str(self.num_victory) + ' ({} more to go!)'.format(constants.REQUIRED_WIN - self.num_victory),
+            'Number of times {} shouted die'.format(self.name):
+                str(self.num_shout_die) + ' ({} more available)'.format(constants.MAX_DIE - self.num_shout_die),
+            'Number of times {} shouted done'.format(self.name):
+                str(self.num_shout_draw) + ' ({} more available)'.format(constants.MAX_DONE - self.num_shout_done),
+            'Number of times {} shouted draw'.format(self.name):
+                str(self.num_shout_draw) + ' ({} more available)'.format(constants.MAX_DRAW - self.num_shout_draw),
+        }
+        print(statistics)
+
 
 class Card(object):
     def __init__(self, suit, colored, rank, value=None):
@@ -507,9 +520,11 @@ def main():
         for player in game.players():
             player.deck_in_duel.cards[-1].open_up()
             print("\n{}'s deck #{}: {}".format(player.name, player.deck_in_duel.index, player.deck_in_duel))
+            player.print_statistics()
             player.deck_in_duel.state = constants.DeckState.FINISHED
 
     print('Game!')
+    print(game.__dict__)
 
 
 if __name__ == '__main__':
