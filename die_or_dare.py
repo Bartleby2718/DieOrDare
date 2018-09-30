@@ -155,7 +155,7 @@ class Game(object):
 
     def shout_die(self, player_shouted):
         player_shouted.num_shout_die += 1
-        self.duel_ongoing.end(constants.DuelResult.DIED, loser=player_shouted)
+        self.duel_ongoing.end(constants.DuelResult.DIED)
 
     def shout_done(self, player_shouted):
         player_shouted.num_shout_done += 1
@@ -263,7 +263,7 @@ class Duel(object):
         self.winner = winner
         self.loser = loser
         if winner is None and loser is None:
-            if result == constants.DuelResult.FINISHED:
+            if result != constants.DuelResult.DIED:
                 raise ValueError('At least one of winner or loser must be supplied.')
         else:
             if winner is None:
