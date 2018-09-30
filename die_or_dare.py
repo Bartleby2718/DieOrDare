@@ -203,6 +203,7 @@ class Player(object):
         self.deck_in_duel = None
         self.pile = None
         self.key_settings = None
+        self.alias = None
 
     def print_statistics(self):
         statistics = {
@@ -345,15 +346,19 @@ def main():
     player2 = Player(player2_name)
     print("\nAll right, {} and {}. Let's get started!".format(player1_name, player2_name))
 
-    # Start the game by tossing a coin to decide who will be the player_red (takes the red pile & goes first)
+    # Start the game by tossing a coin to decide who will be the Player Red (takes the red pile & goes first)
     if random.random() > .5:
         game = Game(player1, player2)
+        player1.alias = constants.PLAYER_RED
         player1.pile = red_pile
+        player2.alias = constants.PLAYER_BLACK
         player2.pile = black_pile
     else:
         game = Game(player2, player1)
         player2.pile = red_pile
+        player2.alias = constants.PLAYER_RED
         player1.pile = black_pile
+        player1.alias = constants.PLAYER_BLACK
 
     # Decide which characters to use for both players
     for player in game.players():
@@ -484,7 +489,7 @@ def main():
         # start timing and wait for key press
         print('\nWhat will you two do?')
         start = time.time()
-        while not (all([player_has_shouted_dare[player.] for player in ['Player Red', 'Player Black']]])
+        while not (all([player_has_shouted_dare[player.alias] for player in game.players()])
                    or any(has_red_shouted_other.values()) or any(
                     has_black_shouted_other.values()) or time.time() - start > constants.TIME_LIMIT_FOR_ACTION):
             pass
@@ -492,7 +497,7 @@ def main():
 
         # identify and process the action
         has_found_action = False
-        if all([player_has_shouted_dare[player] for player in 'Player Red', 'Player Black']):
+        if all([player_has_shouted_dare[player.alias] for player in game.players()]):
             game.process_action(None, constants.Action.DARE)
             has_found_action = True
         for action, has_happened in has_red_shouted_other.items():
@@ -538,7 +543,7 @@ def main():
             # start timing and wait for key press
             print("\nShout done or draw, if that's the case.")
             start = time.time()
-            while not (all([player_has_shouted_dare[player] for player in ['Player Red', 'Player Black'])
+            while not (all([player_has_shouted_dare[player.alias] for player in game.players()])
                        or any(has_red_shouted_other.values()) or any(has_black_shouted_other.values())
                        or time.time() - start > constants.TIME_LIMIT_FOR_ACTION):
                 pass
@@ -546,7 +551,7 @@ def main():
 
             # identify and process the action
             has_found_action = False
-            if all([player_has_shouted_dare[player] for player in ['Player Red', 'Player Black']]]):
+            if all([player_has_shouted_dare[player.alias] for player in game.players()]):
 
                 game.process_action(None, constants.Action.DARE)
                 has_found_action = True
