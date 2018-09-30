@@ -139,7 +139,7 @@ class Game(object):
         else:
             player_shouted.num_shout_done += 1
             if player_shouted.num_shout_done > 1:
-                self.end('forfeit_done', loser=player_shouted)
+                self.end(constants.FORFEITED_BY_WRONG_DONE, loser=player_shouted)
 
     def shout_draw(self, player_shouted, duel):
         player_red_deck_sum = sum([card.value for card in duel.player_red.deck])
@@ -149,7 +149,7 @@ class Game(object):
         else:
             player_shouted.num_shout_draw += 1
             if player_shouted.num_shout_draw > 1:
-                self.end(constants.GameResult.FORFEITED_BY_DRAW, loser=player_shouted)
+                self.end(constants.GameResult.FORFEITED_BY_WRONG_DRAW, loser=player_shouted)
 
 
 class Player(object):
@@ -222,8 +222,8 @@ class Duel(object):
 
 def main():
     # Setup
-    red_joker = Card(None, True, 'Joker', 13)
-    black_joker = Card(None, False, 'Joker', 13)
+    red_joker = Card(None, True, 'Joker', constants.HIGHEST_VALUE)
+    black_joker = Card(None, False, 'Joker', constants.HIGHEST_VALUE)
     ranks = constants.RANKS
     red_pile = [red_joker] + [Card(suit, True, rank, ranks.index(rank) + 1) for suit in constants.RED_SUITS for rank in ranks]
     black_pile = [black_joker] + [Card(suit, False, rank, ranks.index(rank) + 1) for suit in constants.BLACK_SUITS for rank in ranks]
