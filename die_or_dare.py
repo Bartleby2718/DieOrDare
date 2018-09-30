@@ -134,16 +134,22 @@ class Game(object):
         return self.player_red, self.player_black
 
     def process_action(self, player_shouted, action):
-        if action == constants.Action.DIE:
-            self.shout_die(player_shouted)
+        if action is None:
+            self.process_no_shouts()
+        elif action == constants.Action.DARE:
+            self.process_double_dare()
+        elif action == constants.Action.DIE:
+            self.process_shout_die(player_shouted)
         elif action == constants.Action.DONE:
-            self.shout_done(player_shouted)
+            self.process_shout_done(player_shouted)
         elif action == constants.Action.DRAW:
-            self.shout_draw(player_shouted)
+            self.process_shout_draw(player_shouted)
         else:
-            self.double_dare()
+            raise ValueError('Unaccepted action.')
 
-    def double_dare(self):
+    def process_no_shouts(self):
+        """"compares the sums and decides the winner"""
+        print('All right. No actions by any of you.')
         sum_red = sum([card.value for card in self.player_red.deck_in_duel.cards])
         sum_black = sum([card.value for card in self.player_black.deck_in_duel.cards])
         if sum_red > sum_black:
@@ -153,11 +159,15 @@ class Game(object):
         else:
             self.duel_ongoing.end(constants.DuelResult.DRAWN)
 
-    def shout_die(self, player_shouted):
+    def process_double_dare(self):
+        """indicate that both users have dared"""
+        pass
+
+    def process_shout_die(self, player_shouted):
         player_shouted.num_shout_die += 1
         self.duel_ongoing.end(constants.DuelResult.DIED)
 
-    def shout_done(self, player_shouted):
+    def process_shout_done(self, player_shouted):
         player_shouted.num_shout_done += 1
         values = set([card.value for deck in player_shouted.decks for card in deck])
         if len(values) == len(constants.RANKS):
@@ -169,7 +179,7 @@ class Game(object):
                 self.duel_ongoing.end(constants.DuelResult.ABORTED_BY_FORFEIT, loser=player_shouted)
                 self.end(constants.GameResult.FORFEITED_BY_WRONG_DONE, loser=player_shouted)
 
-    def shout_draw(self, player_shouted):
+    def process_shout_draw(self, player_shouted):
         player_shouted.num_shout_draw += 1
         player_red_deck_sum = sum([card.value for card in self.player_red.deck])
         player_black_deck_sum = sum([card.value for card in self.player_black.deck])
@@ -274,35 +284,45 @@ class Duel(object):
 
 
 def main():
+    def red_shout_dare(key):
+        keyboard.unhook_key(key.name)
+        print('Player Red shouted Dare!')
+        player_has_shouted_dare[constants.PLAYER_RED] = True
+
     def red_shout_die(key):
-        keyboard.unhook_all()
+        keyboard.unhook_key(key.name)
         print('Player Red shouted Die!')
-        whether_red_took_actions[constants.Action.DIE] = True
+        has_red_shouted_other[constants.Action.DIE] = True
 
     def red_shout_done(key):
-        keyboard.unhook_all()
+        keyboard.unhook_key(key.name)
         print('Player Red shouted Done!')
-        whether_red_took_actions[constants.Action.DONE] = True
+        has_red_shouted_other[constants.Action.DONE] = True
 
     def red_shout_draw(key):
-        keyboard.unhook_all()
+        keyboard.unhook_key(key.name)
         print('Player Red shouted Draw!')
-        whether_red_took_actions[constants.Action.DRAW] = True
+        has_red_shouted_other[constants.Action.DRAW] = True
+
+    def black_shout_dare(key):
+        keyboard.unhook_key(key.name)
+        print('Player Black shouted Dare!')
+        player_has_shouted_dare[constants.PLAYER_BLACK] = True
 
     def black_shout_die(key):
-        keyboard.unhook_all()
+        keyboard.unhook_key(key.name)
         print('Player black shouted Die!')
-        whether_black_took_actions[constants.Action.DIE] = True
+        has_black_shouted_other[constants.Action.DIE] = True
 
     def black_shout_done(key):
-        keyboard.unhook_all()
+        keyboard.unhook_key(key.name)
         print('Player black shouted Done!')
-        whether_black_took_actions[constants.Action.DONE] = True
+        has_black_shouted_other[constants.Action.DONE] = True
 
     def black_shout_draw(key):
-        keyboard.unhook_all()
+        keyboard.unhook_key(key.name)
         print('Player black shouted Draw!')
-        whether_black_took_actions[constants.Action.DRAW] = True
+        has_black_shouted_other[constants.Action.DRAW] = True
 
     # Setup
     red_joker = Card(None, True, 'Joker', constants.HIGHEST_VALUE)
@@ -447,83 +467,102 @@ def main():
             print("{}'s deck #{}: {}".format(player.name, player.deck_in_duel.index, player.deck_in_duel))
 
         # reset the players' actions before getting input
-        whether_red_took_actions = {constants.Action.DARE: False, constants.Action.DIE: False,
-                                    constants.Action.DONE: False, constants.Action.DRAW: False, }
-        whether_black_took_actions = {constants.Action.DARE: False, constants.Action.DIE: False,
-                                      constants.Action.DONE: False, constants.Action.DRAW: False, }
+        player_has_shouted_dare = {constants.PLAYER_RED: False, constants.PLAYER_BLACK: False}
+        has_red_shouted_other = {constants.Action.DIE: False, constants.Action.DONE: False,
+                                 constants.Action.DRAW: False, }
+        has_black_shouted_other = {constants.Action.DIE: False, constants.Action.DONE: False,
+                                   constants.Action.DRAW: False, }
 
         # hook keys
-        if game.player_red.num_shout_die < constants.MAX_DIE:
-            keyboard.on_press_key(game.player_red.key_settings[constants.Action.DIE], red_shout_die)
-        if game.player_red.num_shout_done < constants.MAX_DONE:
-            keyboard.on_press_key(game.player_red.key_settings[constants.Action.DONE], red_shout_done)
-        if game.player_black.num_shout_die < constants.MAX_DIE:
-            keyboard.on_press_key(game.player_black.key_settings[constants.Action.DIE], black_shout_die)
-        if game.player_black.num_shout_done < constants.MAX_DONE:
-            keyboard.on_press_key(game.player_black.key_settings[constants.Action.DONE], black_shout_done)
+        keyboard.on_press_key(game.player_red.key_settings[constants.Action.DARE], red_shout_dare)
+        keyboard.on_press_key(game.player_red.key_settings[constants.Action.DIE], red_shout_die)
+        keyboard.on_press_key(game.player_red.key_settings[constants.Action.DONE], red_shout_done)
+        keyboard.on_press_key(game.player_black.key_settings[constants.Action.DARE], black_shout_dare)
+        keyboard.on_press_key(game.player_black.key_settings[constants.Action.DIE], black_shout_die)
+        keyboard.on_press_key(game.player_black.key_settings[constants.Action.DONE], black_shout_done)
 
         # start timing and wait for key press
         print('\nWhat will you two do?')
         start = time.time()
-        while not (any(whether_red_took_actions.values()) or any(
-                whether_black_took_actions.values()) or time.time() - start > constants.TIME_LIMIT_FOR_ACTION):
+        while not (all([player_has_shouted_dare[player.] for player in ['Player Red', 'Player Black']]])
+                   or any(has_red_shouted_other.values()) or any(
+                    has_black_shouted_other.values()) or time.time() - start > constants.TIME_LIMIT_FOR_ACTION):
             pass
+        keyboard.unhook_all()
 
-        # find out what happened and update the score accordingly
+        # identify and process the action
         has_found_action = False
-        for action, has_happened in whether_red_took_actions.items():
+        if all([player_has_shouted_dare[player] for player in 'Player Red', 'Player Black']):
+            game.process_action(None, constants.Action.DARE)
+            has_found_action = True
+        for action, has_happened in has_red_shouted_other.items():
             if not has_found_action and has_happened:
                 game.process_action(game.player_red, action)
                 has_found_action = True
-        for action, has_happened in whether_black_took_actions.items():
+        for action, has_happened in has_black_shouted_other.items():
             if not has_found_action and has_happened:
                 game.process_action(game.player_black, action)
                 has_found_action = True
-        if not has_found_action:
-            print('Ooh, double dare!')
+        if not has_found_action:  # consider no input as dare
             game.process_action(None, constants.Action.DARE)
 
-        if not game.duel_ongoing.over:
-            # reset the players' actions
-            whether_red_took_actions = {constants.Action.DARE: False, constants.Action.DIE: False,
-                                        constants.Action.DONE: False, constants.Action.DRAW: False, }
-            whether_black_took_actions = {constants.Action.DARE: False, constants.Action.DIE: False,
-                                          constants.Action.DONE: False, constants.Action.DRAW: False, }
+        if game.duel_ongoing.over:
+            # reveal the last cards anyway
+            print("\nlet's open the last cards anyway.")
+            for player in game.players():
+                player.deck_in_duel.cards[-1].open_up()
+                print("\n{}'s deck #{}: {}".format(player.name, player.deck_in_duel.index, player.deck_in_duel))
+        else:
+            # open the last cards
+            print("\nThe last cards will be opened in 3 seconds!")
+            time.sleep(3)
+            for player in game.players():
+                player.deck_in_duel.cards[-1].open_up()
+                print("\n{}'s deck #{}: {}".format(player.name, player.deck_in_duel.index, player.deck_in_duel))
+
+            # reset the players' actions before getting input
+            player_has_shouted_dare = {constants.PLAYER_RED: False, constants.PLAYER_BLACK: False}
+            has_red_shouted_other = {constants.Action.DIE: False, constants.Action.DONE: False,
+                                     constants.Action.DRAW: False, }
+            has_black_shouted_other = {constants.Action.DIE: False, constants.Action.DONE: False,
+                                       constants.Action.DRAW: False, }
 
             # hook keys
-            if game.player_red.num_shout_done < constants.MAX_DONE:
-                keyboard.on_press_key(game.player_red.key_settings[constants.Action.DONE], red_shout_done)
-            if game.player_red.num_shout_draw < constants.MAX_DRAW:
-                keyboard.on_press_key(game.player_red.key_settings[constants.Action.DRAW], red_shout_draw)
-            if game.player_black.num_shout_done < constants.MAX_DONE:
-                keyboard.on_press_key(game.player_black.key_settings[constants.Action.DONE], black_shout_done)
-            if game.player_black.num_shout_draw < constants.MAX_DRAW:
-                keyboard.on_press_key(game.player_black.key_settings[constants.Action.DRAW], black_shout_draw)
+            keyboard.on_press_key(game.player_red.key_settings[constants.Action.DARE], red_shout_dare)
+            keyboard.on_press_key(game.player_red.key_settings[constants.Action.DONE], red_shout_done)
+            keyboard.on_press_key(game.player_red.key_settings[constants.Action.DRAW], red_shout_draw)
+            keyboard.on_press_key(game.player_black.key_settings[constants.Action.DARE], black_shout_dare)
+            keyboard.on_press_key(game.player_black.key_settings[constants.Action.DONE], black_shout_done)
+            keyboard.on_press_key(game.player_black.key_settings[constants.Action.DRAW], black_shout_draw)
 
             # start timing and wait for key press
-            print('\nWhat will you two do?')
+            print("\nShout done or draw, if that's the case.")
             start = time.time()
-            while not (any(whether_red_took_actions.values()) or any(
-                    whether_black_took_actions.values()) or time.time() - start > constants.TIME_LIMIT_FOR_ACTION):
+            while not (all([player_has_shouted_dare[player] for player in ['Player Red', 'Player Black'])
+                       or any(has_red_shouted_other.values()) or any(has_black_shouted_other.values())
+                       or time.time() - start > constants.TIME_LIMIT_FOR_ACTION):
                 pass
+            keyboard.unhook_all()
 
-            # find out what happened and update the score accordingly
+            # identify and process the action
             has_found_action = False
-            for action, has_happened in whether_red_took_actions.items():
+            if all([player_has_shouted_dare[player] for player in ['Player Red', 'Player Black']]]):
+
+                game.process_action(None, constants.Action.DARE)
+                has_found_action = True
+            for action, has_happened in has_red_shouted_other.items():
                 if not has_found_action and has_happened:
                     game.process_action(game.player_red, action)
                     has_found_action = True
-            for action, has_happened in whether_black_took_actions.items():
+            for action, has_happened in has_black_shouted_other.items():
                 if not has_found_action and has_happened:
                     game.process_action(game.player_black, action)
                     has_found_action = True
             if not has_found_action:
-                game.process_action(None, constants.Action.DARE)
+                game.process_action(None, None)
 
         # open the last cards and output the current score
         for player in game.players():
-            player.deck_in_duel.cards[-1].open_up()
-            print("\n{}'s deck #{}: {}".format(player.name, player.deck_in_duel.index, player.deck_in_duel))
             player.print_statistics()
             player.deck_in_duel.state = constants.DeckState.FINISHED
 
