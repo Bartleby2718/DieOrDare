@@ -181,8 +181,8 @@ class Game(object):
 
     def process_shout_draw(self, player_shouted):
         player_shouted.num_shout_draw += 1
-        player_red_deck_sum = sum([card.value for card in self.player_red.deck])
-        player_black_deck_sum = sum([card.value for card in self.player_black.deck])
+        player_red_deck_sum = sum([card.value for card in self.player_red.deck_in_duel.cards])
+        player_black_deck_sum = sum([card.value for card in self.player_black.deck_in_duel.cards])
         if player_red_deck_sum == player_black_deck_sum:
             self.duel_ongoing.end(constants.DuelResult.DRAWN, winner=player_shouted)
         else:
