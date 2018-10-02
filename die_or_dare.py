@@ -480,10 +480,12 @@ def main():
 
         # hook keys
         keyboard.on_press_key(game.player_red.key_settings[constants.Action.DARE], red_shout_dare)
-        keyboard.on_press_key(game.player_red.key_settings[constants.Action.DIE], red_shout_die)
+        if game.player_red.num_shout_die < constants.MAX_DIE:
+            keyboard.on_press_key(game.player_red.key_settings[constants.Action.DIE], red_shout_die)
         keyboard.on_press_key(game.player_red.key_settings[constants.Action.DONE], red_shout_done)
         keyboard.on_press_key(game.player_black.key_settings[constants.Action.DARE], black_shout_dare)
-        keyboard.on_press_key(game.player_black.key_settings[constants.Action.DIE], black_shout_die)
+        if game.player_black.num_shout_die < constants.MAX_DIE:
+            keyboard.on_press_key(game.player_black.key_settings[constants.Action.DIE], black_shout_die)
         keyboard.on_press_key(game.player_black.key_settings[constants.Action.DONE], black_shout_done)
 
         # start timing and wait for key press
