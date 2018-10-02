@@ -35,7 +35,6 @@ class DuelResult(object):
 
 
 class GameResult(object):
-    DRAWN = 'Drawn'
     GAME = 'Finished'
     DONE = 'Done'
     FORFEITED_BY_WRONG_DONE = 'Forfeited by wrong done'
