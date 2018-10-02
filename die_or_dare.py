@@ -360,17 +360,18 @@ def main():
         player1.pile = black_pile
         player1.alias = constants.PLAYER_BLACK
 
-    # Decide which characters to use for both players
+    # Decide which keys to use for both players
     for player in game.players():
-        print('\n{}, decide the set of characters you will use.'.format(player.name))
+        print('\n{}, decide the set of keys you will use.'.format(player.name))
         player.key_settings = {constants.Action.DARE: '', constants.Action.DIE: '', constants.Action.DONE: '',
                                constants.Action.DRAW: ''}
         for action in player.key_settings:
-            character = player.key_settings.get(action)
-            while not character.isalpha() or character in player.key_settings.values():
-                character = input('Which character will you use to indicate {}? '.format(action))
-            player.key_settings[action] = character
-
+            key = player.key_settings.get(action)
+            is_valid_key = False
+            while not is_valid_key:
+                key = input('Which key will you use to indicate {}? '.format(action))
+                is_valid_key = len(key) == 1 and key.islower() and key not in player.key_settings.values()
+            player.key_settings[action] = key
     # Draw cards to form 9 decks for each player and sort them based on the delegate's value
     for player in game.players():
         pile = player.pile
