@@ -330,8 +330,10 @@ def main():
     black_joker = Card(None, False, 'Joker', constants.HIGHEST_VALUE)
 
     ranks = constants.RANKS
-    red_pile = [red_joker] + [Card(suit, True, rank, ranks.index(rank) + 1) for suit in constants.RED_SUITS for rank in ranks]
-    black_pile = [black_joker] + [Card(suit, False, rank, ranks.index(rank) + 1) for suit in constants.BLACK_SUITS for rank in ranks]
+    red_suits = constants.RED_SUITS
+    black_suits = constants.BLACK_SUITS
+    red_pile = [red_joker] + [Card(suit, True, rank, ranks.index(rank) + 1) for suit in red_suits for rank in ranks]
+    black_pile = [black_joker] + [Card(suit, False, rank, ranks.index(rank) + 1) for suit in black_suits for rank in ranks]
 
     print("Let's start DieOrDare!")
 
@@ -407,7 +409,7 @@ def main():
         game.duel_ongoing = duel
         print('\n\n\nStarting Duel {}...'.format(duel.index))
         print('\n{}, your turn!'.format(offense.name))
-        time.sleep(1)
+        time.sleep(constants.DELAY_AFTER_TURN_NOTICE)
 
         # Skip choosing deck in the last duel
         is_last_duel = duel.index == 9
@@ -466,8 +468,8 @@ def main():
             print("{}'s deck #{}: {}".format(player.name, player.deck_in_duel.index, player.deck_in_duel))
 
         # open the second cards
-        print("\nThe second cards will be opened in 3 seconds!")
-        time.sleep(3)
+        print("The second cards will be opened in {} seconds!\n".format(constants.DELAY_BEFORE_CARD_OPEN))
+        time.sleep(constants.DELAY_BEFORE_CARD_OPEN)
         for player in game.players():
             player.deck_in_duel.cards[1].open_up()
             print("{}'s deck #{}: {}".format(player.name, player.deck_in_duel.index, player.deck_in_duel))
@@ -522,8 +524,8 @@ def main():
                 print("\n{}'s deck #{}: {}".format(player.name, player.deck_in_duel.index, player.deck_in_duel))
         else:
             # open the last cards
-            print("\nThe last cards will be opened in 3 seconds!")
-            time.sleep(3)
+            print("The last cards will be opened in {} seconds!\n".format(constants.DELAY_BEFORE_CARD_OPEN))
+            time.sleep(constants.DELAY_BEFORE_CARD_OPEN)
             for player in game.players():
                 player.deck_in_duel.cards[-1].open_up()
                 print("\n{}'s deck #{}: {}".format(player.name, player.deck_in_duel.index, player.deck_in_duel))
@@ -573,6 +575,9 @@ def main():
         for player in game.players():
             player.print_statistics()
             player.deck_in_duel.state = constants.DeckState.FINISHED
+
+        # give players some time to read the result
+        time.sleep(constants.DELAY_AFTER_DUEL_ENDS)
 
     print('Game!')
     print(game.__dict__)
