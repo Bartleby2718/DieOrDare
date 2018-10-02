@@ -550,7 +550,7 @@ def main():
             start = time.time()
             while not (all([player_has_shouted_dare[player.alias] for player in game.players()])
                        or any(has_red_shouted_other.values()) or any(has_black_shouted_other.values())
-                       or time.time() - start > constants.TIME_LIMIT_FOR_ACTION):
+                       or time.time() - start > constants.TIME_LIMIT_FOR_FINAL_ACTION):
                 pass
             keyboard.unhook_all()
 
