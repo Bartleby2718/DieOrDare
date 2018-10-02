@@ -169,7 +169,7 @@ class Game(object):
 
     def process_shout_done(self, player_shouted):
         player_shouted.num_shout_done += 1
-        values = set([card.value for deck in player_shouted.decks for card in deck])
+        values = set([card.value for deck in player_shouted.decks for card in deck.cards])
         if len(values) == len(constants.RANKS):
             self.duel_ongoing.end(constants.DuelResult.ABORTED_BY_DONE, winner=player_shouted)
             self.end(constants.GameResult.DONE, winner=player_shouted)
