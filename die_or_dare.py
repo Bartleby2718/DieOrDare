@@ -247,7 +247,8 @@ class Card(object):
     def __repr__(self):
         if self.is_open:
             if self.suit is None:
-                return 'Colored Joker' if self.colored else 'Black Joker'
+                color_in_string = 'Colored' if self.colored else 'Black'
+                return '{} {} ({})'.format(color_in_string, constants.JOKER, self.value)
             else:
                 return '{} of {}'.format(self.rank, self.suit)
         else:
@@ -343,8 +344,8 @@ def main():
         has_black_shouted_other[constants.Action.DRAW] = True
 
     # Setup
-    red_joker = Card(None, True, 'Joker', constants.HIGHEST_VALUE)
-    black_joker = Card(None, False, 'Joker', constants.HIGHEST_VALUE)
+    red_joker = Card(None, True, constants.JOKER, constants.HIGHEST_VALUE)
+    black_joker = Card(None, False, constants.JOKER, constants.HIGHEST_VALUE)
 
     ranks = constants.RANKS
     red_suits = constants.RED_SUITS
