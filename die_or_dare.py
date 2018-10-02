@@ -148,7 +148,7 @@ class Game(object):
             raise ValueError('Unaccepted action.')
 
     def process_no_shouts(self):
-        """"compares the sums and decides the winner"""
+        """compare the sums and decides the winner"""
         print('All right. No actions by any of you.')
         sum_red = sum([card.value for card in self.player_red.deck_in_duel.cards])
         sum_black = sum([card.value for card in self.player_black.deck_in_duel.cards])
@@ -160,7 +160,7 @@ class Game(object):
             self.duel_ongoing.end(constants.DuelResult.DRAWN)
 
     def process_double_dare(self):
-        """indicate that both users have dared"""
+        """do nothing if both users have dared after the second cards are open"""
         pass
 
     def process_shout_die(self, player_shouted):
