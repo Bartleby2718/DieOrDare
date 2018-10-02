@@ -154,10 +154,25 @@ class Game(object):
         sum_black = sum([card.value for card in self.player_black.deck_in_duel.cards])
         if sum_red > sum_black:
             self.duel_ongoing.end(constants.DuelResult.FINISHED, winner=self.player_red)
+            if self.player_red.num_victory == 3:
+                self.end(constants.GameResult.FINISHED, winner=self.player_red)
+                print("{} wins! The game has ended as {} first scored {} points".format(self.winner.name,
+                                                                                        self.winner.name,
+                                                                                        constants.REQUIRED_WIN))
         elif sum_red < sum_black:
             self.duel_ongoing.end(constants.DuelResult.FINISHED, winner=self.player_black)
+            if self.player_black.num_victory == 3:
+                self.end(constants.GameResult.FINISHED, winner=self.player_black)
+                print("{} wins! The game has ended as {} first scored {} points".format(self.winner.name,
+                                                                                        self.winner.name,
+                                                                                        constants.REQUIRED_WIN))
         else:
             self.duel_ongoing.end(constants.DuelResult.DRAWN)
+            if self.duel_ongoing.defense.num_victory == 3:
+                self.end(constants.GameResult.FINISHED, winner=self.duel_ongoing.defense)
+                print("{} wins! The game has ended as {} first scored {} points".format(self.winner.name,
+                                                                                        self.winner.name,
+                                                                                        constants.REQUIRED_WIN))
 
     def process_double_dare(self):
         """do nothing if both users have dared after the second cards are open"""
@@ -185,6 +200,8 @@ class Game(object):
         player_black_deck_sum = sum([card.value for card in self.player_black.deck_in_duel.cards])
         if player_red_deck_sum == player_black_deck_sum:
             self.duel_ongoing.end(constants.DuelResult.DRAWN, winner=player_shouted)
+            if player_shouted.num_victory == constants.REQUIRED_WIN:
+                self.end(constants.GameResult.FINISHED, winner=player_shouted)
         else:
             player_shouted.num_shout_draw += 1
             if player_shouted.num_shout_draw > 1:
