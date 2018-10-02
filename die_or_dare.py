@@ -188,7 +188,7 @@ class Game(object):
         else:
             player_shouted.num_shout_draw += 1
             if player_shouted.num_shout_draw > 1:
-                self.duel_ongoing.end(constants.DuelResult.ABORTED_BY_FORFEIT, lose=player_shouted)
+                self.duel_ongoing.end(constants.DuelResult.ABORTED_BY_FORFEIT, loser=player_shouted)
                 self.end(constants.GameResult.FORFEITED_BY_WRONG_DRAW, loser=player_shouted)
 
 
