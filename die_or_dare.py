@@ -180,7 +180,7 @@ class Game(object):
 
     def process_shout_die(self, player_shouted):
         player_shouted.num_shout_die += 1
-        self.duel_ongoing.end(constants.DuelResult.DIED)
+        self.duel_ongoing.end(constants.DuelResult.DIED, player_shouted)
 
     def process_shout_done(self, player_shouted):
         player_shouted.num_shout_done += 1
@@ -279,20 +279,24 @@ class Duel(object):
         self.index = index  # one-based
         self.over = False
         self.time_ended = None
+        self.player_died = None
         self.winner = None
         self.loser = None
         self.result = None
         self.has_updated_score = False
         self.has_chosen_delegate = False
 
-    def end(self, result, winner=None, loser=None):
+    def end(self, result, player_died=None, winner=None, loser=None):
         self.over = True
         self.time_ended = time.time()
         self.result = result
+        self.player_died = player_died
         self.winner = winner
         self.loser = loser
         if winner is None and loser is None:
             if result != constants.DuelResult.DIED:
+                print("Duel #{}: {} died, so no one gets a point.".format(self.index, self.player_died.name))
+            else:
                 raise ValueError('At least one of winner or loser must be supplied.')
         else:
             if winner is None:
