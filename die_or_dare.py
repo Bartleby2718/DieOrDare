@@ -126,9 +126,6 @@ class Game(object):
             self.winner = self.player_red if loser == self.player_black else self.player_black
         elif loser is None:
             self.loser = self.player_red if winner == self.player_black else self.player_black
-        self.duel_ongoing = None
-        for player in self.players():
-            player.deck_in_duel = None
 
     def players(self):
         return self.player_red, self.player_black
@@ -604,6 +601,12 @@ def main():
         for player in game.players():
             player.print_statistics()
             player.deck_in_duel.state = constants.DeckState.FINISHED
+
+        
+        # display the result of the duel and clean up
+        game.duel_ongoing = None
+        for player in self.players():
+            player.deck_in_duel = None
 
         # give players some time to read the result
         time.sleep(constants.DELAY_AFTER_DUEL_ENDS)
