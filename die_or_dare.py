@@ -167,7 +167,7 @@ class Game(object):
                                                                                         self.winner.name,
                                                                                         constants.REQUIRED_WIN))
         else:
-            self.duel_ongoing.end(constants.DuelResult.DRAWN)
+            self.duel_ongoing.end(constants.DuelResult.DRAWN, winner=self.duel_ongoing.defense)
             if self.duel_ongoing.defense.num_victory == 3:
                 self.end(constants.GameResult.FINISHED, winner=self.duel_ongoing.defense)
                 print("{} wins! The game has ended as {} first scored {} points".format(self.winner.name,
@@ -294,8 +294,14 @@ class Duel(object):
         self.winner = winner
         self.loser = loser
         if winner is None and loser is None:
-            if result != constants.DuelResult.DIED:
+            if result == constants.DuelResult.DIED:
                 print("Duel #{}: {} died, so no one gets a point.".format(self.index, self.player_died.name))
+            elif result == constants.DuelResult.DRAWN:
+                self.winner = self.defense
+                self.loser = self.offense
+                self.winner.num_victory += 1
+                print("Duel #{}: The sums are equal, but no one shouted draw, so the defense ({}) gets a point.".format(
+                    self.index, self.winner.name))
             else:
                 raise ValueError('At least one of winner or loser must be supplied.')
         else:
