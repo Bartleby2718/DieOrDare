@@ -401,7 +401,8 @@ def main():
             cards = []
             for k in range(constants.CARD_PER_DECK):
                 cards.append(pile.pop())
-            cards.sort(key=lambda x: -x.value)
+            biggest_value_index = cards.index(max(cards, key=lambda x: x.value))
+            cards[biggest_value_index], cards[0] = cards[0], cards[biggest_value_index]
             new_deck = Deck(cards)
             new_deck.delegate().open_up()
             decks.append(new_deck)
