@@ -231,7 +231,9 @@ class Player(object):
                 str(self.num_shout_draw) + ' ({} more available)'.format(constants.MAX_DRAW - self.num_shout_draw),
         }
         print(statistics)
-
+        
+    def display_decks(self):
+        print([[(card.value if card.is_open else '?') for card in deck.cards] for deck in self.decks])
 
 class Card(object):
     def __init__(self, suit, colored, rank, value=None):
@@ -492,6 +494,7 @@ def main():
         print('\nThe two decks have been chosen!')
         for player in game.players():
             print("{}'s deck #{}: {}".format(player.name, player.deck_in_duel.index, player.deck_in_duel))
+            player.display_decks()
 
         # open the second cards
         print("The second cards will be opened in {} seconds!\n".format(constants.DELAY_BEFORE_CARD_OPEN))
@@ -499,6 +502,7 @@ def main():
         for player in game.players():
             player.deck_in_duel.cards[1].open_up()
             print("{}'s deck #{}: {}".format(player.name, player.deck_in_duel.index, player.deck_in_duel))
+            player.display_decks()
 
         # reset the players' actions before getting input
         player_has_shouted_dare = {constants.PLAYER_RED: False, constants.PLAYER_BLACK: False}
@@ -555,6 +559,7 @@ def main():
             for player in game.players():
                 player.deck_in_duel.cards[-1].open_up()
                 print("\n{}'s deck #{}: {}".format(player.name, player.deck_in_duel.index, player.deck_in_duel))
+                player.display_decks()
 
             # reset the players' actions before getting input
             player_has_shouted_dare = {constants.PLAYER_RED: False, constants.PLAYER_BLACK: False}
