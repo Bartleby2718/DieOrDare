@@ -249,9 +249,9 @@ class Card(object):
                 color_in_string = 'Colored' if self.colored else 'Black'
                 return '{} {} ({})'.format(color_in_string, constants.JOKER, self.value)
             else:
-                return '{} of {}'.format(self.rank, self.suit)
+                return '{} of {} ({})'.format(self.rank, self.suit, self.value)
         else:
-            return 'Hidden'
+            return 'Hidden (?)'
 
     def open_up(self):
         self.is_open = True
