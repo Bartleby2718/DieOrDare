@@ -610,7 +610,7 @@ def main():
         
         # display the result of the duel and clean up
         game.duel_ongoing = None
-        for player in self.players():
+        for player in game.players():
             player.deck_in_duel = None
 
         # give players some time to read the result
