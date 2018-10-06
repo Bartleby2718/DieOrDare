@@ -150,21 +150,21 @@ class Game(object):
         sum_black = sum([card.value for card in self.player_black.deck_in_duel.cards])
         if sum_red > sum_black:
             self.duel_ongoing.end(constants.DuelResult.FINISHED, winner=self.player_red)
-            if self.player_red.num_victory == 3:
+            if self.player_red.num_victory == constants.REQUIRED_WIN:
                 self.end(constants.GameResult.FINISHED, winner=self.player_red)
                 print("{} wins! The game has ended as {} first scored {} points".format(self.winner.name,
                                                                                         self.winner.name,
                                                                                         constants.REQUIRED_WIN))
         elif sum_red < sum_black:
             self.duel_ongoing.end(constants.DuelResult.FINISHED, winner=self.player_black)
-            if self.player_black.num_victory == 3:
+            if self.player_black.num_victory == constants.REQUIRED_WIN:
                 self.end(constants.GameResult.FINISHED, winner=self.player_black)
                 print("{} wins! The game has ended as {} first scored {} points".format(self.winner.name,
                                                                                         self.winner.name,
                                                                                         constants.REQUIRED_WIN))
         else:
             self.duel_ongoing.end(constants.DuelResult.DRAWN, winner=self.duel_ongoing.defense)
-            if self.duel_ongoing.defense.num_victory == 3:
+            if self.duel_ongoing.defense.num_victory == constants.REQUIRED_WIN:
                 self.end(constants.GameResult.FINISHED, winner=self.duel_ongoing.defense)
                 print("{} wins! The game has ended as {} first scored {} points".format(self.winner.name,
                                                                                         self.winner.name,
@@ -187,7 +187,7 @@ class Game(object):
             print("{} wins! The game has ended as {} first shouted done correctly.".format(self.winner, self.winner))
         else:
             player_shouted.num_shout_done += 1
-            if player_shouted.num_shout_done > 1:
+            if player_shouted.num_shout_done > constants.MAX_DONE:
                 self.duel_ongoing.end(constants.DuelResult.ABORTED_BY_FORFEIT, player_shouted)
                 self.end(constants.GameResult.FORFEITED_BY_WRONG_DONE, loser=player_shouted)
                 print("{} wins! The game has ended as {} shouted done wrong.".format(self.winner, self.loser))
@@ -203,7 +203,7 @@ class Game(object):
                 print("{} wins! The game has ended as {} shouted draw wrong.".format(self.winner, self.loser))
         else:
             player_shouted.num_shout_draw += 1
-            if player_shouted.num_shout_draw > 1:
+            if player_shouted.num_shout_draw > constants.MAX_DRAW:
                 self.duel_ongoing.end(constants.DuelResult.ABORTED_BY_FORFEIT, player_shouted)
                 self.end(constants.GameResult.FORFEITED_BY_WRONG_DRAW, loser=player_shouted)
                 print("{} wins! The game has ended as {} shouted draw wrong.".format(self.winner, self.loser))
@@ -445,7 +445,7 @@ def main():
         time.sleep(constants.DELAY_AFTER_TURN_NOTICE)
 
         # Skip choosing deck in the last duel
-        is_last_duel = duel.index == 9
+        is_last_duel = duel.index == constants.DECK_PER_PILE
         if is_last_duel:
             offense_deck = [deck for deck in game.player_red.decks if deck.state == constants.DeckState.UNOPENED][0]
             offense_valid_input = True
@@ -477,7 +477,7 @@ def main():
             offense_deck_input = input('Choose one of your deck (Enter the deck number): ')
             try:
                 offense_deck = offense.decks[int(offense_deck_input) - 1]
-                if offense_deck.state != constants.DeckState.UNOPENED or not (1 <= int(offense_deck_input) <= 9):
+                if offense_deck.state != constants.DeckState.UNOPENED or not (1 <= int(offense_deck_input) <= constants.DECK_PER_PILE):
                     raise ValueError
             except (ValueError, IndexError):
                 print('Invalid input. Enter another number.')
@@ -491,7 +491,7 @@ def main():
             defense_deck_input = input("Choose one of your opponent's deck (Enter the deck number): ")
             try:
                 defense_deck = defense.decks[int(defense_deck_input) - 1]
-                if defense_deck.state != constants.DeckState.UNOPENED or not (1 <= int(defense_deck_input) <= 9):
+                if defense_deck.state != constants.DeckState.UNOPENED or not (1 <= int(defense_deck_input) <= constants.DECK_PER_PILE):
                     raise ValueError
             except (ValueError, IndexError):
                 print('Invalid input. Enter another number.')
