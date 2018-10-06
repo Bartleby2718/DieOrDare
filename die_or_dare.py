@@ -186,7 +186,6 @@ class Game(object):
             self.end(constants.GameResult.DONE, winner=player_shouted)
             print("{} wins! The game has ended as {} first shouted done correctly.".format(self.winner, self.winner))
         else:
-            player_shouted.num_shout_done += 1
             if player_shouted.num_shout_done > constants.MAX_DONE:
                 self.duel_ongoing.end(constants.DuelResult.ABORTED_BY_FORFEIT, player_shouted)
                 self.end(constants.GameResult.FORFEITED_BY_WRONG_DONE, loser=player_shouted)
@@ -202,7 +201,6 @@ class Game(object):
                 self.end(constants.GameResult.FINISHED, winner=player_shouted)
                 print("{} wins! The game has ended as {} shouted draw wrong.".format(self.winner, self.loser))
         else:
-            player_shouted.num_shout_draw += 1
             if player_shouted.num_shout_draw > constants.MAX_DRAW:
                 self.duel_ongoing.end(constants.DuelResult.ABORTED_BY_FORFEIT, player_shouted)
                 self.end(constants.GameResult.FORFEITED_BY_WRONG_DRAW, loser=player_shouted)
