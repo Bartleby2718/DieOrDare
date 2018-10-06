@@ -311,6 +311,7 @@ class Duel(object):
             if loser is None:
                 self.loser = self.offense if winner == self.offense else self.defense
             self.winner.num_victory += 1
+            print("Duel #{}: {} wins and gets a point.".format(self.index, self.winner.name))
 
 
 def main():
