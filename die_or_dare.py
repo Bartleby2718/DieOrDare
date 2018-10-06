@@ -182,13 +182,13 @@ class Game(object):
         player_shouted.num_shout_done += 1
         values = set([card.value for deck in player_shouted.decks for card in deck.cards])
         if len(values) == len(constants.RANKS):
-            self.duel_ongoing.end(constants.DuelResult.ABORTED_BY_DONE, winner=player_shouted)
+            self.duel_ongoing.end(constants.DuelResult.ABORTED_BY_DONE, player_shouted)
             self.end(constants.GameResult.DONE, winner=player_shouted)
             print("{} wins! The game has ended as {} first shouted done correctly.".format(self.winner, self.winner))
         else:
             player_shouted.num_shout_done += 1
             if player_shouted.num_shout_done > 1:
-                self.duel_ongoing.end(constants.DuelResult.ABORTED_BY_FORFEIT, loser=player_shouted)
+                self.duel_ongoing.end(constants.DuelResult.ABORTED_BY_FORFEIT, player_shouted)
                 self.end(constants.GameResult.FORFEITED_BY_WRONG_DONE, loser=player_shouted)
                 print("{} wins! The game has ended as {} shouted done wrong.".format(self.winner, self.loser))
 
@@ -201,11 +201,10 @@ class Game(object):
             if player_shouted.num_victory == constants.REQUIRED_WIN:
                 self.end(constants.GameResult.FINISHED, winner=player_shouted)
                 print("{} wins! The game has ended as {} shouted draw wrong.".format(self.winner, self.loser))
-                
         else:
             player_shouted.num_shout_draw += 1
             if player_shouted.num_shout_draw > 1:
-                self.duel_ongoing.end(constants.DuelResult.ABORTED_BY_FORFEIT, loser=player_shouted)
+                self.duel_ongoing.end(constants.DuelResult.ABORTED_BY_FORFEIT, player_shouted)
                 self.end(constants.GameResult.FORFEITED_BY_WRONG_DRAW, loser=player_shouted)
                 print("{} wins! The game has ended as {} shouted draw wrong.".format(self.winner, self.loser))
 
@@ -235,7 +234,7 @@ class Player(object):
     def display_decks(self):
         print([[(card.value if card.is_open else '?') for card in deck.cards] for deck in self.decks])
 
-        
+
 class Card(object):
     def __init__(self, suit, colored, rank, value=None):
         self.suit = suit
@@ -279,29 +278,33 @@ class Duel(object):
         self.index = index  # one-based
         self.over = False
         self.time_ended = None
-        self.player_died = None
+        self.player_shouted = None
         self.winner = None
         self.loser = None
         self.result = None
         self.has_updated_score = False
         self.has_chosen_delegate = False
 
-    def end(self, result, player_died=None, winner=None, loser=None):
+    def end(self, result, player_shouted=None, winner=None, loser=None):
         self.over = True
         self.time_ended = time.time()
         self.result = result
-        self.player_died = player_died
+        self.player_shouted = player_shouted
         self.winner = winner
         self.loser = loser
         if winner is None and loser is None:
             if result == constants.DuelResult.DIED:
-                print("Duel #{}: {} died, so no one gets a point.".format(self.index, self.player_died.name))
+                print("Duel #{}: {} died, so no one gets a point.".format(self.index, self.player_shouted.name))
             elif result == constants.DuelResult.DRAWN:
                 self.winner = self.defense
                 self.loser = self.offense
                 self.winner.num_victory += 1
                 print("Duel #{}: The sums are equal, but no one shouted draw, so the defense ({}) gets a point.".format(
                     self.index, self.winner.name))
+            elif result == constants.DuelResult.ABORTED_BY_DONE:
+                print("Duel #{}: {} is done, so this duel is aborted.".format(self.index, self.player_shouted.name))
+            elif result == constants.DuelResult.ABORTED_BY_FORFEIT:
+                print("Duel #{}: {} shouted wrong, so this duel is aborted.".format(self.index, self.player_shouted.name))
             else:
                 raise ValueError('At least one of winner or loser must be supplied.')
         else:
@@ -467,7 +470,7 @@ def main():
             # display the number of dies available
             for player in game.players():
                 print(
-                    'Number of dies available for {}: {}'.format(player.name, constants.MAX_DIE - player.num_shout_die))                    
+                    'Number of dies available for {}: {}'.format(player.name, constants.MAX_DIE - player.num_shout_die))
 
         # Choose offense deck
         while not offense_valid_input:
@@ -600,7 +603,6 @@ def main():
             # identify and process the action
             has_found_action = False
             if all([player_has_shouted_dare[player.alias] for player in game.players()]):
-
                 game.process_action(None, constants.Action.DARE)
                 has_found_action = True
             for action, has_happened in has_red_shouted_other.items():
