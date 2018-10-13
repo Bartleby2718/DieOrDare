@@ -104,7 +104,7 @@ class BasicAI(AI):
 
 
 class Game(object):
-    def __init__(self):
+    def __init__(self, *args):
         self.player_red = None  # takes the red pile and gets to go first
         self.player_black = None
         self.players = None
@@ -125,14 +125,39 @@ class Game(object):
                                        ranks]
         self.black_pile = [black_joker] + [Card(suit, False, rank, ranks.index(rank) + 1) for suit in black_suits for
                                            rank in ranks]
+        num_computers = len(args)
+        if num_computers in range(3):
+            self.num_human_players = 2 - num_computers
+        else:
+            raise ValueError('Invalid number of computer players')
         print("Let's start DieOrDare!")
 
     def initialize_players(self):
-        human_player1_prompt = "Enter player 1's name: "
-        player1 = HumanPlayer(human_player1_prompt)
-        human_player2_prompt = "Enter player 2's name: "
-        blacklist = [player1.name]
-        player2 = HumanPlayer(human_player2_prompt, blacklist)
+        if self.num_human_players == 0:
+            class1_name = sys.argv[1]
+            class1 = globals().get(class1_name)
+            if class1 is None or not issubclass(class1, ComputerPlayer):
+                raise ValueError('Invalid class name for computer player')
+            player1 = class1()
+            class2_name = sys.argv[2]
+            class2 = globals().get(class2_name)
+            if class2 is None or not issubclass(class2, ComputerPlayer):
+                raise ValueError('Invalid class name for computer player')
+            player2 = class2()
+        elif self.num_human_players == 1:
+            class1_name = sys.argv[1]
+            class1 = globals().get(class1_name)
+            if class1 is None or not issubclass(class1, ComputerPlayer):
+                raise ValueError('Invalid class name for computer player')
+            player1 = class1()
+            human_player1_prompt = "Enter your name: "
+            player2 = HumanPlayer(human_player1_prompt)
+        else:
+            human_player1_prompt = "Enter player 1's name: "
+            player1 = HumanPlayer(human_player1_prompt)
+            human_player2_prompt = "Enter player 2's name: "
+            blacklist = [player1.name]
+            player2 = HumanPlayer(human_player2_prompt, blacklist)
         print("\nAll right, {} and {}. Let's get started!".format(player1.name, player2.name))
         print("Let's flip a coin to decide who will be the Player Red!")
         if random.random() > .5:
@@ -733,7 +758,7 @@ class Duel(object):
 
 
 if __name__ == '__main__':
-    game = Game()
+    game = Game(*sys.argv[1:])
     game.initialize_players()
     game.set_keys()
     game.initialize_decks()
