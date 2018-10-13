@@ -274,9 +274,13 @@ class Player(object):
 class HumanPlayer(Player):
     def __init__(self, prompt, blacklist=None):
         super().__init__()
-        name = ''
+        name = input(prompt)
         blacklist = [] if blacklist is None else blacklist
         while not name.isalnum() or name in blacklist:
+            if not name.isalnum():
+                print("Only alphanumeric characters are allowed for the player's name.")
+            else:
+                print("You can't use the following name(s): {}".format(', '.join(blacklist)))
             name = input(prompt)
         self.name = name
 
@@ -284,8 +288,13 @@ class HumanPlayer(Player):
         blacklist = [] if blacklist is None else blacklist
         print('\n{}, decide the set of keys you will use.'.format(self.name))
         for action in self.key_settings:
-            is_valid_key = False
+            key = input('{}, which key will you use to indicate {}? '.format(self.name, action))
+            is_valid_key = len(key) == 1 and key.islower() and key not in blacklist
             while not is_valid_key:
+                if not (len(key) != 1 and key.islower()):
+                    print('Use a single lowercase alphabet.')
+                else:
+                    print("You can't use the following key(s): {}".format(', '.join(blacklist)))
                 key = input('{}, which key will you use to indicate {}? '.format(self.name, action))
                 is_valid_key = len(key) == 1 and key.islower() and key not in blacklist
             self.key_settings[action] = key
@@ -327,37 +336,34 @@ class HumanPlayer(Player):
                 print('\tDeck {}: {}'.format(deck.index, deck.delegate()))
 
         # Choose offense deck
+        offense_deck_input = input('Choose one of your deck (Enter the deck number): ')
+        offense_allowed_inputs = [deck.index for deck in self.decks if deck.stete == constants.DeckState.UNOPENED]
         offense_valid_input = False
         while not offense_valid_input:
-            offense_deck_input = input('Choose one of your deck (Enter the deck number): ')
             try:
-                offense_deck = self.decks[int(offense_deck_input) - 1]
-                if offense_deck.state != constants.DeckState.UNOPENED or not (
-                        1 <= int(offense_deck_input) <= constants.DECK_PER_PILE):
+                if int(offense_deck_input) in offense_allowed_inputs:
+                    offense_valid_input = True
+                else:
                     raise ValueError
-            except (ValueError, IndexError):
-                print('Invalid input. Enter another number.')
-            else:
-                offense_valid_input = True
+            except ValueError:
+                print('Invalid input. Enter a number among {}.'.format(', '.join(offense_allowed_inputs)))
+            offense_deck_input = input('Choose one of your deck (Enter the deck number): ')
+        offense_deck = self.decks[int(offense_deck_input) - 1]
 
         # Choose defense deck
-        for opponent_deck in opponent_decks:
-            if opponent_deck.state == constants.DeckState.UNOPENED:
-                my_delegate = offense_deck.delegate()
-                opponent_delegate = opponent_deck.delegate()
-                print('Deck #{}: {}'.format(opponent_deck.index, opponent_deck.delegate()))
+        defense_deck_input = input("Choose one of your opponent's deck (Enter the deck number): ")
+        defense_allowed_inputs = [deck.index for deck in opponent_decks if deck.stete == constants.DeckState.UNOPENED]
         defense_valid_input = False
         while not defense_valid_input:
-            defense_deck_input = input("Choose one of your opponent's deck (Enter the deck number): ")
             try:
-                defense_deck = opponent_decks[int(defense_deck_input) - 1]
-                if defense_deck.state != constants.DeckState.UNOPENED or not (
-                        1 <= int(defense_deck_input) <= constants.DECK_PER_PILE):
+                if int(defense_deck_input) in defense_allowed_inputs:
+                    defense_valid_input = True
+                else:
                     raise ValueError
-            except (ValueError, IndexError):
-                print('Invalid input. Enter another number.')
-            else:
-                defense_valid_input = True
+            except ValueError:
+                print('Invalid input. Enter a number among {}.'.format(', '.join(defense_allowed_inputs)))
+                defense_deck_input = input("Choose one of your opponent's deck (Enter the deck number): ")
+        defense_deck = opponent_decks[int(defense_deck_input) - 1]
         return offense_deck, defense_deck
 
 
