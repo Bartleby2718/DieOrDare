@@ -367,6 +367,55 @@ class HumanPlayer(Player):
         return offense_deck, defense_deck
 
 
+class ComputerPlayer(Player):
+    def __init__(self, blacklist=None):
+        super().__init__()
+        name = 'Computer{}'.format(id(self))
+        blacklist = [] if blacklist is None else blacklist
+        if name in blacklist:
+            name += 'a'
+        self.name = name
+
+    def set_keys(self, blacklist=None):
+        if self.alias == constants.PLAYER_RED:
+            self.key_settings = {constants.Action.DARE: 'z', constants.Action.DIE: 'x',
+                                 constants.Action.DONE: 'c', constants.Action.DRAW: 'v'}
+        else:
+            self.key_settings = {constants.Action.DARE: 'u', constants.Action.DIE: 'i',
+                                 constants.Action.DONE: 'o', constants.Action.DRAW: 'p'}
+
+    @abc.abstractmethod
+    def decide_delegate(self, cards):
+        pass
+
+    @abc.abstractmethod
+    def decide_decks_for_duel(self, opponent_decks):
+        pass
+
+
+class DumbComputerPlayer(ComputerPlayer):
+    def decide_delegate(self, cards):
+        cards.sort(key=lambda x: -x.value)
+        joker_found = False
+        joker_index = 0
+        for i in range(len(cards)):
+            card = cards[i]
+            if card.suit is None:
+                joker_found = True
+                joker_index = i
+                break
+        if joker_found:
+            cards[0], cards[joker_index] = cards[joker_index], cards[0]
+        return cards
+
+    def decide_decks_for_duel(self, opponent_decks):
+        my_min_deck = min([deck for deck in self.decks if deck.state == constants.DeckState.UNOPENED],
+                     key=lambda x: x.index)
+        opponent_min_deck = min([deck for deck in opponent_decks if deck.state == constants.DeckState.UNOPENED],
+                           key=lambda x: x.index)
+        return my_min_deck, opponent_min_deck
+
+
 class Card(object):
     def __init__(self, suit, colored, rank, value=None):
         self.suit = suit
