@@ -116,6 +116,9 @@ class Game(object):
         elif self.duel_ongoing.result == constants.DuelResult.ABORTED_BY_WRONG_DRAW:
             self.end(constants.GameResult.FORFEITED_BY_WRONG_DRAW, loser=self.duel_ongoing.player_shouted)
             print("{} wins! The game has ended as {} shouted draw wrong.".format(self.winner.name, self.loser.name))
+        elif self.duel_ongoing.result == constants.DuelResult.ABORTED_BEFORE_DOUBLE_DONE:
+            self.end(constants.GameResult.FORFEITED_BEFORE_DOUBLE_DONE, loser=self.player_red)
+            print("{} wins! The game has ended as the Player Red failed to finish the game before the final double done.".format(self.winner.name)
 
         # cleanup
         for player in self.players:
@@ -298,6 +301,24 @@ class ComputerPlayer(Player):
     @abc.abstractmethod
     def decide_decks_for_duel(self, opponent_decks):
         pass
+
+    @staticmethod
+    def unopened_values(decks):
+        values = []
+        for deck in decks:
+            for card in deck.cards:
+                if deck.state == constants.DeckState.UNOPENED or not card.is_open:
+                    values.append(card.value)
+        return tuple(set(values))
+
+    @staticmethod
+    def opened_values(decks):
+        values = []
+        for deck in decks:
+            for card in deck.cards:
+                if deck.state != constants.DeckState.UNOPENED and card.is_open:
+                    values.append(card.value)
+        return tuple(set(values))
 
 
 class DumbComputerPlayer(ComputerPlayer):
@@ -538,6 +559,16 @@ class Duel(object):
             keyboard.unhook_key(key.name)
             print('Player black shouted Done!')
             has_black_shouted_other[constants.Action.DONE] = True
+
+        # Prevent double done
+        red_opened_values = ComputerPlayer.opened_values(self.player_red.decks)
+        red_unopened_values = ComputerPlayer.unopened_values(self.player_red.decks)
+        red_right_before_done = len(red_opened_values) == constants.NUM_CARD - 1 and len(red_unopened_values) == 1
+        black_opened_values = ComputerPlayer.opened_values(self.player_black.decks)
+        black_unopened_values = ComputerPlayer.unopened_values(self.player_black.decks)
+        black_right_before_done = len(black_opened_values) == constants.NUM_CARD - 1 and len(black_unopened_values) == 1
+        if red_right_before_done and black_right_before_done:
+            self.end(constants.DuelResult.ABORTED_BEFORE_DOUBLE_DONE, winner=self.player_black)
 
         # reset the players' actions before getting input
         player_has_shouted_dare = {constants.PLAYER_RED: False, constants.PLAYER_BLACK: False}
