@@ -1,7 +1,7 @@
 DECK_PER_PILE = 9
 CARD_PER_DECK = 3
 RANKS = ('Ace', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King')
-HIGHEST_VALUE = 13
+HIGHEST_VALUE = NUM_CARD = len(RANKS)
 RED_SUITS = ('Hearts', 'Diamonds')
 BLACK_SUITS = ('Spades', 'Clubs')
 JOKER = 'Joker'
@@ -39,6 +39,7 @@ class DuelResult(object):
     ABORTED_BY_CORRECT_DONE = 'Aborted by correct done'
     ABORTED_BY_WRONG_DONE = 'Aborted by wrong done'
     ABORTED_BY_WRONG_DRAW = 'Aborted by wrong draw'
+    ABORTED_BEFORE_DOUBLE_DONE = 'Aborted before double done'
 
 
 class GameResult(object):
@@ -46,3 +47,4 @@ class GameResult(object):
     DONE = 'Done'
     FORFEITED_BY_WRONG_DONE = 'Forfeited by wrong done'
     FORFEITED_BY_WRONG_DRAW = 'Forfeited by wrong draw'
+    FORFEITED_BEFORE_DOUBLE_DONE = 'Forfeited before double done'
