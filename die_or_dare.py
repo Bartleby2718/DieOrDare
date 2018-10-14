@@ -136,18 +136,18 @@ class Game(object):
         if self.num_human_players == 0:
             class1_name = sys.argv[1]
             class1 = globals().get(class1_name)
-            if class1 is None or not issubclass(class1, ComputerPlayer):
+            if type(class1) in ['NoneType', 'ComputerPlayer'] or not issubclass(class1, ComputerPlayer):
                 raise ValueError('Invalid class name for computer player')
             player1 = class1()
             class2_name = sys.argv[2]
             class2 = globals().get(class2_name)
-            if class2 is None or not issubclass(class2, ComputerPlayer):
+            if type(class2) in ['NoneType', 'ComputerPlayer'] or not issubclass(class2, ComputerPlayer):
                 raise ValueError('Invalid class name for computer player')
             player2 = class2()
         elif self.num_human_players == 1:
             class1_name = sys.argv[1]
             class1 = globals().get(class1_name)
-            if class1 is None or not issubclass(class1, ComputerPlayer):
+            if type(class1) in ['NoneType', 'ComputerPlayer'] or not issubclass(class1, ComputerPlayer):
                 raise ValueError('Invalid class name for computer player')
             player1 = class1()
             human_player1_prompt = "Enter your name: "
