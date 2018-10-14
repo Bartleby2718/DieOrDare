@@ -7,103 +7,6 @@ import sys
 import time
 
 
-class AI(abc.ABC):
-    @abc.abstractmethod
-    def decide_joker_value(self, deck):
-        """determine the value of joker
-        :param deck: a deck with a joker
-        """
-        pass
-
-    @abc.abstractmethod
-    def decide_and_open_delegate(self, deck):
-        """determine the delegate, the card with the largest value in the deck, and open it
-        :param deck: the deck in which a delegate has to be chosen
-        :return: the same deck but with the delegate in the first of the cards
-        """
-        return deck
-
-    @classmethod
-    @abc.abstractmethod
-    def decide_action(cls, my_decks, opponent_decks):
-        """determine which action you will take, considering the odds
-        :return: a boolean value indicating whether to die"""
-        pass
-
-    @abc.abstractmethod
-    def decide_deck_in_duel(self, my_decks, opponent_decks):
-        """determine which deck to put in a duel
-        :return: a 2-tuple of my deck and opponent's deck"""
-        pass
-
-
-class BasicAI(AI):
-    def decide_joker_value(self, deck):
-        return constants.HIGHEST_VALUE
-
-    def decide_and_open_delegate(self, deck):
-        cards = deck.cards
-        random.shuffle(cards)
-        biggest_card = max(cards, key=lambda x: x.value)
-        biggest_card.open_up()
-        biggest_card_index = cards.index(biggest_card)  # zero-based
-        cards[0], cards[biggest_card_index] = cards[biggest_card_index], cards[0]
-        deck.cards = tuple(cards)
-        return deck
-
-    @classmethod
-    def decide_action(cls, my_decks, opponent_decks):
-        odds_lose = cls.get_chances(my_decks, opponent_decks)[2]
-        return odds_lose > .5
-
-    @abc.abstractmethod
-    def decide_deck_in_duel(self, my_decks, opponent_decks):
-        """determine which deck to put in a duel"""
-        pass
-
-    @staticmethod
-    def get_chances(me, opponent):
-        """get chances of winning, tying, losing, and unknown.
-        :return: a 4-tuple containing the chances of winning, tying, losing, and unknown
-        """
-        # get the value of my delegate and the opponent's
-        my_delegate_value = me.deck_in_duel.delegate().value
-        opponent_delegate_value = opponent.deck_in_duel.delegate().value
-        # get a list of my hidden cards with value no bigger than that of the delegate
-        my_hidden_cards = []
-        for deck in me.decks:
-            for card in deck.cards:
-                if not card.is_open and card.value <= my_delegate_value:
-                    my_hidden_cards.append(card)
-        # get a list hidden cards with value no bigger than that of the delegate
-        opponent_hidden_cards = []
-        for deck in opponent.decks:
-            for card in deck.cards:
-                if not card.is_open and card.value <= opponent_delegate_value:
-                    opponent_hidden_cards.append(card)
-        # calculate the odds that you will lose the duel
-        win, lose, draw, unknown = 0, 0, 0, 0
-        for my_card in my_hidden_cards:
-            for opponent_card in opponent_hidden_cards:
-                # joker may still be hidden
-                if my_card.value is None or opponent_card.value is None:
-                    unknown += 1
-                elif my_card.value > opponent_card.value:
-                    win += 1
-                elif my_card.value == opponent_card.value:
-                    draw += 1
-                elif my_card.value < opponent_card.value:
-                    lose += 1
-                else:
-                    raise Exception('Something is wrong.')
-        total = len(my_hidden_cards) * len(opponent_hidden_cards)
-        odds_win = win / total
-        odds_draw = draw / total
-        odds_lose = lose / total
-        odds_unknown = unknown / total
-        return odds_win, odds_draw, odds_lose, odds_unknown
-
-
 class Game(object):
     def __init__(self, *args):
         self.player_red = None  # takes the red pile and gets to go first
@@ -434,7 +337,6 @@ class Card(object):
     def __repr__(self):
         if self.is_open:
             if self.suit is None:
-                
                 return '{} {}'.format(self.value, '★' if self.colored else '☆')
             else:
                 return '{} {}'.format(self.value, self.suit[0])
