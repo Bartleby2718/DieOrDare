@@ -213,7 +213,6 @@ class Game(object):
 
         # cleanup
         for player in self.players:
-            player.print_statistics()
             player.deck_in_duel.state = constants.DeckState.FINISHED
             player.deck_in_duel = None
         self.duel_ongoing = None
@@ -281,19 +280,6 @@ class Player(object):
     def open_next_card(self):
         to_open_index = len([card for card in self.deck_in_duel.cards if card.is_open])
         self.deck_in_duel.cards[to_open_index].open_up()
-        print("{}'s deck #{}: {}".format(self.name, self.deck_in_duel.index, self.deck_in_duel))
-
-    def hidden_cards(self):
-        return [card for deck in self.decks for card in deck.cards if not card.is_open]
-
-    def print_statistics(self):
-        statistics = {
-            'Number of duels {} won'.format(self.name):
-                '{} ({} more to go!)'.format(self.num_victory, constants.REQUIRED_WIN - self.num_victory),
-            'Number of times {} shouted die'.format(self.name):
-                '{} ({} more available)'.format(self.num_shout_die, constants.MAX_DIE - self.num_shout_die)
-        }
-        print(statistics)
 
 
 class HumanPlayer(Player):
@@ -350,16 +336,6 @@ class HumanPlayer(Player):
             return tuple([biggest] + not_biggest)
 
     def decide_decks_for_duel(self, opponent_decks):
-        # display decks
-        print('\nThe delegates of your unopened decks are: ')
-        for deck in self.decks:
-            if deck.state == constants.DeckState.UNOPENED:
-                print('\tDeck {}: {}'.format(deck.index, deck.delegate()))
-        print("The delegates of your opponent's unopened decks are: ")
-        for deck in opponent_decks:
-            if deck.state == constants.DeckState.UNOPENED:
-                print('\tDeck {}: {}'.format(deck.index, deck.delegate()))
-
         # Choose offense deck
         offense_deck_input = input('Choose one of your deck (Enter the deck number): ')
         offense_allowed_inputs = [deck.index for deck in self.decks if deck.state == constants.DeckState.UNOPENED]
@@ -455,12 +431,12 @@ class Card(object):
     def __repr__(self):
         if self.is_open:
             if self.suit is None:
-                color_in_string = 'Colored' if self.colored else 'Black'
-                return '{} {} ({})'.format(color_in_string, constants.JOKER, self.value)
+                
+                return '{} {}'.format(self.value, '★' if self.colored else '☆')
             else:
-                return '{} of {} ({})'.format(self.rank, self.suit, self.value)
+                return '{} {}'.format(self.value, self.suit[0])
         else:
-            return 'Hidden (?)'
+            return '?'
 
     def open_up(self):
         self.is_open = True
@@ -503,9 +479,6 @@ class Duel(object):
             offense_deck = [deck for deck in self.offense.decks if deck.state == constants.DeckState.UNOPENED].pop()
             defense_deck = [deck for deck in self.defense.decks if deck.state == constants.DeckState.UNOPENED].pop()
         else:
-            for player in self.players:
-                print(
-                    'Number of dies available for {}: {}'.format(player.name, constants.MAX_DIE - player.num_shout_die))
             offense_deck, defense_deck = self.offense.decide_decks_for_duel(self.defense.decks)
         offense_deck.state = constants.DeckState.IN_DUEL
         defense_deck.state = constants.DeckState.IN_DUEL
@@ -516,9 +489,50 @@ class Duel(object):
         print('\nThe two decks have been chosen!')
 
     def display_decks(self):
-        for player in self.players:
-            print("\n{}'s deck #{}: {}".format(player.name, player.deck_in_duel.index, player.deck_in_duel))
-            print([[(card.value if card.is_open else '?') for card in deck.cards] for deck in player.decks])
+        row_format = '{:^15}' * constants.DECK_PER_PILE
+        red_first_line = '{:^105}{:^30}'.format('{} ({})'.format(self.player_red.name, self.player_red.alias),
+                                                'Score {} / Die {}'.format(self.player_red.num_victory,
+                                                                           self.player_red.num_shout_die))
+        print(red_first_line)
+        red_numbers = [
+            '< #{} >'.format(deck.index) if deck.state == constants.DeckState.IN_DUEL else '#{}'.format(deck.index)
+            for deck in self.player_red.decks]
+        red_number_line = row_format.format(*red_numbers)
+        print(red_number_line)
+        red_unopened_delegates = [repr(deck.cards[0]) if deck.state == constants.DeckState.UNOPENED else '' for deck in
+                                  self.player_red.decks]
+        print(row_format.format(*red_unopened_delegates))
+        red_opened_delegates = ['' if deck.state == constants.DeckState.UNOPENED else repr(deck.cards[0]) for deck in
+                                self.player_red.decks]
+        print(row_format.format(*red_opened_delegates))
+        red_seconds = ['' if deck.state == constants.DeckState.UNOPENED else repr(deck.cards[1]) for deck in
+                       self.player_red.decks]
+        print(row_format.format(*red_seconds))
+        red_lasts = ['' if deck.state == constants.DeckState.UNOPENED else repr(deck.cards[2]) for deck in
+                     self.player_red.decks]
+        print(row_format.format(*red_lasts))
+        print()
+        black_lasts = ['' if deck.state == constants.DeckState.UNOPENED else repr(deck.cards[2]) for deck in
+                       self.player_black.decks]
+        print(row_format.format(*black_lasts))
+        black_seconds = ['' if deck.state == constants.DeckState.UNOPENED else repr(deck.cards[1]) for deck in
+                         self.player_black.decks]
+        print(row_format.format(*black_seconds))
+        black_opened_delegates = ['' if deck.state == constants.DeckState.UNOPENED else repr(deck.cards[0]) for deck in
+                                  self.player_black.decks]
+        print(row_format.format(*black_opened_delegates))
+        black_unopened_delegate = [repr(deck.cards[0]) if deck.state == constants.DeckState.UNOPENED else '' for deck in
+                                   self.player_black.decks]
+        print(row_format.format(*black_unopened_delegate))
+        black_numbers = [
+            '< #{} >'.format(deck.index) if deck.state == constants.DeckState.IN_DUEL else '#{}'.format(deck.index) for
+            deck in self.player_black.decks]
+        black_number_line = row_format.format(*black_numbers)
+        print(black_number_line)
+        black_first_line = '{:^105}{:^30}'.format('{} (Player Black)'.format(self.player_black.name),
+                                                  'Score {} / Die {}'.format(self.player_black.num_victory,
+                                                                             self.player_black.num_shout_die))
+        print(black_first_line)
 
     def open_next_cards(self):
         if self.over:
@@ -764,12 +778,15 @@ if __name__ == '__main__':
     game.initialize_decks()
     while not game.over:
         duel = game.start_duel()
+        duel.display_decks()
         duel.decide_decks_for_duel()
         duel.display_decks()
         duel.open_next_cards()
+        duel.display_decks()
         duel.get_and_process_input()
         duel.display_decks()
         duel.open_next_cards()
+        duel.display_decks()
         if not duel.over:
             duel.get_and_process_final_input()
         game.cleanup_duel()
