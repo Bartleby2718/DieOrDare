@@ -143,8 +143,8 @@ class Game(object):
             class2 = globals().get(class2_name)
             if type(class2) in ['NoneType', 'ComputerPlayer'] or not issubclass(class2, ComputerPlayer):
                 raise ValueError('Invalid class name for computer player')
-            blacklist = [player1.name]
-            player2 = class2(blacklist)
+            forbidden_name = player1.name
+            player2 = class2(forbidden_name)
         elif self.num_human_players == 1:
             class1_name = sys.argv[1]
             class1 = globals().get(class1_name)
@@ -152,14 +152,14 @@ class Game(object):
                 raise ValueError('Invalid class name for computer player')
             player1 = class1()
             human_player1_prompt = "Enter your name: "
-            blacklist = [player1.name]
-            player2 = HumanPlayer(human_player1_prompt, blacklist)
+            forbidden_name = player1.name
+            player2 = HumanPlayer(human_player1_prompt, forbidden_name)
         else:
             human_player1_prompt = "Enter player 1's name: "
             player1 = HumanPlayer(human_player1_prompt)
             human_player2_prompt = "Enter player 2's name: "
-            blacklist = [player1.name]
-            player2 = HumanPlayer(human_player2_prompt, blacklist)
+            forbidden_name = player1.name
+            player2 = HumanPlayer(human_player2_prompt, forbidden_name)
         print("\nAll right, {} and {}. Let's get started!".format(player1.name, player2.name))
         print("Let's flip a coin to decide who will be the Player Red!")
         if random.random() > .5:
@@ -285,13 +285,12 @@ class Player(object):
 
 
 class HumanPlayer(Player):
-    def __init__(self, prompt, blacklist=None):
+    def __init__(self, prompt, forbidden_name=''):
         super().__init__()
         name = input(prompt)
-        blacklist = [] if blacklist is None else blacklist
-        while not name.isalnum() or name in blacklist:
-            if name in blacklist:
-                print("You can't use the following name: {}".format(', '.join(blacklist)))
+        while not name.isalnum() or name == forbidden_name:
+            if name == forbidden_name:
+                print("You can't use {}. Choose another name.".format(forbidden_name))
             else:
                 print("Only alphanumeric characters are allowed for the player's name.")
             name = input(prompt)
@@ -371,11 +370,10 @@ class HumanPlayer(Player):
 
 
 class ComputerPlayer(Player):
-    def __init__(self, blacklist=None):
+    def __init__(self, forbidden_name=''):
         super().__init__()
         name = 'Computer{}'.format(id(self))
-        blacklist = [] if blacklist is None else blacklist
-        if name in blacklist:
+        if name == forbidden_name:
             name += 'a'
         self.name = name
 
