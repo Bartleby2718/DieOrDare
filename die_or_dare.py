@@ -362,7 +362,7 @@ class HumanPlayer(Player):
 
         # Choose offense deck
         offense_deck_input = input('Choose one of your deck (Enter the deck number): ')
-        offense_allowed_inputs = [deck.index for deck in self.decks if deck.stete == constants.DeckState.UNOPENED]
+        offense_allowed_inputs = [deck.index for deck in self.decks if deck.state == constants.DeckState.UNOPENED]
         offense_valid_input = False
         while not offense_valid_input:
             try:
@@ -377,7 +377,7 @@ class HumanPlayer(Player):
 
         # Choose defense deck
         defense_deck_input = input("Choose one of your opponent's deck (Enter the deck number): ")
-        defense_allowed_inputs = [deck.index for deck in opponent_decks if deck.stete == constants.DeckState.UNOPENED]
+        defense_allowed_inputs = [deck.index for deck in opponent_decks if deck.state == constants.DeckState.UNOPENED]
         defense_valid_input = False
         while not defense_valid_input:
             try:
