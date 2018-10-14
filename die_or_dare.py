@@ -288,10 +288,10 @@ class HumanPlayer(Player):
         name = input(prompt)
         blacklist = [] if blacklist is None else blacklist
         while not name.isalnum() or name in blacklist:
-            if not name.isalnum():
-                print("Only alphanumeric characters are allowed for the player's name.")
+            if name in blacklist:
+                print("You can't use the following name: {}".format(', '.join(blacklist)))
             else:
-                print("You can't use the following name(s): {}".format(', '.join(blacklist)))
+                print("Only alphanumeric characters are allowed for the player's name.")
             name = input(prompt)
         self.name = name
 
@@ -302,10 +302,10 @@ class HumanPlayer(Player):
             key = input('{}, which key will you use to indicate {}? '.format(self.name, action))
             is_valid_key = len(key) == 1 and key.islower() and key not in blacklist
             while not is_valid_key:
-                if not (len(key) != 1 and key.islower()):
-                    print('Use a single lowercase alphabet.')
-                else:
+                if key in blacklist:
                     print("You can't use the following key(s): {}".format(', '.join(blacklist)))
+                else:
+                    print('Use a single lowercase alphabet.')
                 key = input('{}, which key will you use to indicate {}? '.format(self.name, action))
                 is_valid_key = len(key) == 1 and key.islower() and key not in blacklist
             self.key_settings[action] = key
