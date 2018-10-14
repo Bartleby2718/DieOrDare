@@ -350,7 +350,7 @@ class HumanPlayer(Player):
                     raise ValueError
             except ValueError:
                 print('Invalid input. Enter a number among {}.'.format(', '.join(offense_allowed_inputs)))
-            offense_deck_input = input('Choose one of your deck (Enter the deck number): ')
+                offense_deck_input = input('Choose one of your deck (Enter the deck number): ')
         offense_deck = self.decks[int(offense_deck_input) - 1]
 
         # Choose defense deck
