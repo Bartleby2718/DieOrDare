@@ -771,7 +771,24 @@ class OutputHandler(object):
                 print('{:10}{}'.format('', line))
         time.sleep(duration)
         
+    def export_to_json(self, last_game_state_in_json=None):
+        if last_game_state_in_json is None:
+            last_game_state_in_json = self.states[-1]
+        last_game = jsonpickle.decode(last_game_state_in_json)
+        red_class = last_game.player_red.__class__.__name__
+        red_name = last_game.player_red.name
+        black_class = last_game.player_black.__class__.__name__
+        black_name = last_game.player_black.name
+        time_created_str = last_game.time_created
+        time_created_float = float(time_created_str)
+        datetime_started = datetime.datetime.fromtimestamp(time_created_float)
+        datetime_str = datetime.datetime.strftime(datetime_started, '%Y%m%d%H%M%S')
+        file_name = '{}({}){}({}){}.json'.format(red_class, red_name, black_class, black_name, datetime_str)
+        content = jsonpickle.encode(self.states)
+        with open(file_name, 'w') as file:
+            file.write(content)
 
+            
 if __name__ == '__main__':
     game = Game(*sys.argv[1:])
     game.initialize_players()
