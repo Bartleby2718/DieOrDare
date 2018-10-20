@@ -1,3 +1,5 @@
+import enum
+
 DECK_PER_PILE = 9
 CARD_PER_DECK = 3
 RANKS = ('Ace', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King')
@@ -19,20 +21,20 @@ MAX_DONE = 1
 MAX_DRAW = 1
 
 
-class Action(object):
+class Action(enum.Enum):
     DARE = 'Dare'
     DIE = 'Die'
     DONE = 'Done'
     DRAW = 'Draw'
 
 
-class DeckState(object):
+class DeckState(enum.Enum):
     UNOPENED = 'Unopened'
     IN_DUEL = 'In Duel'
     FINISHED = 'Finished'
 
 
-class DuelResult(object):
+class DuelResult(enum.Enum):
     DRAWN = 'Drawn'
     FINISHED = 'Finished'
     DIED = 'Died'
@@ -42,7 +44,7 @@ class DuelResult(object):
     ABORTED_BEFORE_DOUBLE_DONE = 'Aborted before double done'
 
 
-class GameResult(object):
+class GameResult(enum.Enum):
     FINISHED = 'Finished'
     DONE = 'Done'
     FORFEITED_BY_WRONG_DONE = 'Forfeited by wrong done'
