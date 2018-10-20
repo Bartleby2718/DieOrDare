@@ -1,6 +1,7 @@
 import abc
 import constants
 import itertools
+import jsonpickle
 import keyboard
 import random
 import sys
@@ -139,9 +140,6 @@ class Game(object):
             self.winner = self.player_red if loser == self.player_black else self.player_black
         elif loser is None:
             self.loser = self.player_red if winner == self.player_black else self.player_black
-
-    def display_result(self):
-        print('Game!\nCongratulations! {} has won the Game! (Reason: {})'.format(self.winner.name, self.result))
 
 
 class Player(object):
@@ -712,23 +710,87 @@ class Duel(object):
             print("Duel #{}: {} wins and gets a point.".format(self.index, self.winner.name))
 
 
+class OutputHandler(object):
+    def __init__(self):
+        self.states = []
+        self.messages = []
+
+    def display(self, game_state_in_json, message='', duration=0):
+        self.states.append(game_state_in_json)
+        self.messages.append(message)
+        game = jsonpickle.decode(game_state_in_json)
+        row_format = '{:^15}' * constants.DECK_PER_PILE
+        red_first_line = '{:^105}{:^30}'.format('{} ({})'.format(game.player_red.name, game.player_red.alias),
+                                                'Score {} / Die {}'.format(game.player_red.num_victory,
+                                                                           game.player_red.num_shout_die))
+        print(red_first_line)
+        red_decks = game.player_red.decks
+        red_numbers = ['< #{} >'.format(deck.index) if deck.state == constants.DeckState.IN_DUEL else '#{}'.format(
+            deck.index) for deck in red_decks]
+        red_number_line = row_format.format(*red_numbers)
+        print(red_number_line)
+        red_unopened_delegates = [repr(deck.cards[0]) if deck.state == constants.DeckState.UNOPENED else '' for deck in
+                                  red_decks]
+        print(row_format.format(*red_unopened_delegates))
+        red_opened_delegates = ['' if deck.state == constants.DeckState.UNOPENED else repr(deck.cards[0]) for deck in
+                                red_decks]
+        print(row_format.format(*red_opened_delegates))
+        red_seconds = ['' if deck.state == constants.DeckState.UNOPENED else repr(deck.cards[1]) for deck in
+                       red_decks]
+        print(row_format.format(*red_seconds))
+        red_lasts = ['' if deck.state == constants.DeckState.UNOPENED else repr(deck.cards[2]) for deck in
+                     red_decks]
+        print(row_format.format(*red_lasts))
+        print()
+        black_decks = game.player_black.decks
+        black_lasts = ['' if deck.state == constants.DeckState.UNOPENED else repr(deck.cards[2]) for deck in
+                       black_decks]
+        print(row_format.format(*black_lasts))
+        black_seconds = ['' if deck.state == constants.DeckState.UNOPENED else repr(deck.cards[1]) for deck in
+                         black_decks]
+        print(row_format.format(*black_seconds))
+        black_opened_delegates = ['' if deck.state == constants.DeckState.UNOPENED else repr(deck.cards[0]) for
+                                  deck in black_decks]
+        print(row_format.format(*black_opened_delegates))
+        black_unopened_delegate = [repr(deck.cards[0]) if deck.state == constants.DeckState.UNOPENED else '' for
+                                   deck in black_decks]
+        print(row_format.format(*black_unopened_delegate))
+        black_numbers = [
+            '< #{} >'.format(deck.index) if deck.state == constants.DeckState.IN_DUEL else '#{}'.format(
+                deck.index) for deck in black_decks]
+        black_number_line = row_format.format(*black_numbers)
+        print(black_number_line)
+        black_first_line = '{:^105}{:^30}'.format('{} (Player Black)'.format(game.player_black.name),
+                                                  'Score {} / Die {}'.format(game.player_black.num_victory,
+                                                                             game.player_black.num_shout_die))
+        print(black_first_line)
+        if message:
+            message_delimited = message.split('\n')
+            print('Message:  {}'.format(message_delimited[0]))
+            for line in message_delimited[1:]:
+                print('{:10}{}'.format('', line))
+        time.sleep(duration)
+        
+
 if __name__ == '__main__':
     game = Game(*sys.argv[1:])
     game.initialize_players()
     game.set_keys()
     game.initialize_decks()
+    output_handler = OutputHandler()
     while not game.over:
         duel = game.start_duel()
-        duel.display_decks()
+        output_handler.display(jsonpickle.encode(game))
         duel.decide_decks_for_duel()
-        duel.display_decks()
+        output_handler.display(jsonpickle.encode(game))
         duel.open_next_cards()
-        duel.display_decks()
+        output_handler.display(jsonpickle.encode(game))
         duel.get_and_process_input()
-        duel.display_decks()
+        output_handler.display(jsonpickle.encode(game))
         duel.open_next_cards()
-        duel.display_decks()
+        output_handler.display(jsonpickle.encode(game))
         if not duel.over:
             duel.get_and_process_final_input()
         game.cleanup_duel()
-    game.display_result()
+    ending_message = 'Game!\nCongratulations! {} has won the Game! (Reason: {})'.format(game.winner.name, game.result)
+    output_hander.display(jsonpickle.encode(game), ending_message)
