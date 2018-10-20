@@ -8,27 +8,24 @@ import time
 
 
 class Game(object):
-    def __init__(self, *args):
-        self.player_red = None  # takes the red pile and gets to go first
-        self.player_black = None
-        self.players = None
-        self.over = False
-        self.time_created = time.time()
-        self.time_ended = None
-        self.winner = None
-        self.loser = None
-        self.result = None
-        self.duel_index = 0  # one-based
-        self.duel_ongoing = None
+    def __init__(self, *args, player_red=None, player_black=None, over=False, time_created=None, time_ended=None, winner=None, loser=None, result=None, duel_index=0, duel_ongoing=None, red_pile=None, black_pile=None):
+        self.player_red = player_red  # takes the red pile and gets to go first
+        self.player_black = player_black
+        self.over = over
+        self.time_created = time_created or time.time()
+        self.time_ended = time_ended
+        self.winner = winner
+        self.loser = loser
+        self.result = result
+        self.duel_index = duel_index  # one-based
+        self.duel_ongoing = duel_ongoing
         red_joker = Card(None, True, constants.JOKER, None)
         black_joker = Card(None, False, constants.JOKER, None)
         ranks = constants.RANKS
         red_suits = constants.RED_SUITS
         black_suits = constants.BLACK_SUITS
-        self.red_pile = [red_joker] + [Card(suit, True, rank, ranks.index(rank) + 1) for suit in red_suits for rank in
-                                       ranks]
-        self.black_pile = [black_joker] + [Card(suit, False, rank, ranks.index(rank) + 1) for suit in black_suits for
-                                           rank in ranks]
+        self.red_pile = red_pile or ([red_joker] + [Card(suit, True, rank, ranks.index(rank) + 1) for suit in red_suits for rank in ranks])
+        self.black_pile = black_pile or ([black_joker] + [Card(suit, False, rank, ranks.index(rank) + 1) for suit in black_suits for rank in ranks])
         num_computers = len(args)
         if num_computers in range(3):
             self.num_human_players = 2 - num_computers
@@ -36,6 +33,9 @@ class Game(object):
             raise ValueError('Invalid number of computer players')
         print("Let's start DieOrDare!")
 
+    def players(self):
+        return self.player_red, self.player_black
+    
     def initialize_players(self):
         if self.num_human_players == 0:
             class1_name = sys.argv[1]
@@ -57,13 +57,13 @@ class Game(object):
             player1 = class1()
             human_player1_prompt = "Enter your name: "
             forbidden_name = player1.name
-            player2 = HumanPlayer(human_player1_prompt, forbidden_name)
+            player2 = HumanPlayer.from_input(human_player1_prompt, forbidden_name)
         else:
             human_player1_prompt = "Enter player 1's name: "
-            player1 = HumanPlayer(human_player1_prompt)
+            player1 = HumanPlayer.from_input(human_player1_prompt)
             human_player2_prompt = "Enter player 2's name: "
             forbidden_name = player1.name
-            player2 = HumanPlayer(human_player2_prompt, forbidden_name)
+            player2 = HumanPlayer.from_input(human_player2_prompt, forbidden_name)
         print("\nAll right, {} and {}. Let's get started!".format(player1.name, player2.name))
         print("Let's flip a coin to decide who will be the Player Red!")
         if random.random() > .5:
@@ -72,7 +72,6 @@ class Game(object):
         else:
             self.player_red = player2
             self.player_black = player1
-        self.players = self.player_red, self.player_black
         self.player_red.pile = game.red_pile
         self.player_red.alias = constants.PLAYER_RED
         self.player_black.pile = game.black_pile
@@ -82,7 +81,7 @@ class Game(object):
         print('{}, you are the Player Black.'.format(self.player_black.name))
 
     def initialize_decks(self):
-        for player in self.players:
+        for player in self.players():
             player.initialize_decks()
 
     def set_keys(self):
@@ -93,6 +92,7 @@ class Game(object):
     def start_duel(self):
         self.duel_index += 1
         self.duel_ongoing = Duel(self.player_red, self.player_black, self.duel_index)
+        self.duel_ongoing.decide_offense()
         print('\n\n\nStarting Duel {}...'.format(self.duel_index))
         print('\n{}, your turn!'.format(self.duel_ongoing.offense.name))
         time.sleep(constants.DELAY_AFTER_TURN_NOTICE)
@@ -101,7 +101,7 @@ class Game(object):
     def cleanup_duel(self):
         # identify why the duel ended
         if self.duel_ongoing.result in [constants.DuelResult.DRAWN, constants.DuelResult.FINISHED]:
-            for player in self.players:
+            for player in self.players():
                 if player.num_victory == constants.REQUIRED_WIN:
                     self.end(constants.GameResult.FINISHED, winner=player)
                     print("{0} wins! The game has ended as {0} first scored {1} points".format(player.name,
@@ -118,10 +118,10 @@ class Game(object):
             print("{} wins! The game has ended as {} shouted draw wrong.".format(self.winner.name, self.loser.name))
         elif self.duel_ongoing.result == constants.DuelResult.ABORTED_BEFORE_DOUBLE_DONE:
             self.end(constants.GameResult.FORFEITED_BEFORE_DOUBLE_DONE, loser=self.player_red)
-            print("{} wins! The game has ended as the Player Red failed to finish the game before the final double done.".format(self.winner.name)
+            print("{} wins! The game has ended as the Player Red failed to finish the game before the final double done.".format(self.winner.name))
 
         # cleanup
-        for player in self.players:
+        for player in self.players():
             player.deck_in_duel.state = constants.DeckState.FINISHED
             player.deck_in_duel = None
         self.duel_ongoing = None
@@ -145,17 +145,17 @@ class Game(object):
 
 
 class Player(object):
-    def __init__(self):
-        self.name = ''
-        self.num_victory = 0
-        self.num_shout_die = 0
-        self.num_shout_done = 0
-        self.num_shout_draw = 0
-        self.decks = None
-        self.deck_in_duel = None
-        self.pile = None
-        self.key_settings = {action: '' for action in constants.Action}
-        self.alias = None
+    def __init__(self, name='', num_victory=0, num_shout_die=0, num_shout_done=0, num_shout_draw=0, decks=None, deck_in_duel=None, pile=None, key_settings=None, alias=None):
+        self.name = name
+        self.num_victory = num_victory
+        self.num_shout_die = num_shout_die
+        self.num_shout_done = num_shout_done
+        self.num_shout_draw = num_shout_draw
+        self.decks = decks
+        self.deck_in_duel = deck_in_duel
+        self.pile = pile
+        self.key_settings = key_settings or {action: '' for action in constants.Action}
+        self.alias = alias
 
     def initialize_decks(self):
         random.shuffle(self.pile)
@@ -191,8 +191,8 @@ class Player(object):
 
 
 class HumanPlayer(Player):
-    def __init__(self, prompt, forbidden_name=''):
-        super().__init__()
+    @classmethod
+    def from_input(cls, prompt, forbidden_name=''):
         name = input(prompt)
         while not name.isalnum() or name == forbidden_name:
             if name == forbidden_name:
@@ -200,7 +200,7 @@ class HumanPlayer(Player):
             else:
                 print("Only alphanumeric characters are allowed for the player's name.")
             name = input(prompt)
-        self.name = name
+        return cls(name)
 
     def set_keys(self, blacklist=None):
         blacklist = [] if blacklist is None else blacklist
@@ -278,12 +278,12 @@ class HumanPlayer(Player):
 
 
 class ComputerPlayer(Player):
-    def __init__(self, forbidden_name=''):
-        super().__init__()
-        name = 'Computer{}'.format(id(self))
+    @classmethod
+    def auto_generate(cls, forbidden_name=''):
+        name = 'Computer{}'.format(random.randint(1, 999))
         if name == forbidden_name:
             name += 'a'
-        self.name = name
+        return cls(name)
 
     def set_keys(self, blacklist=None):
         if self.alias == constants.PLAYER_RED:
@@ -344,12 +344,12 @@ class DumbComputerPlayer(ComputerPlayer):
 
 
 class Card(object):
-    def __init__(self, suit, colored, rank, value=None):
+    def __init__(self, suit, colored, rank, value=None, is_open=False):
         self.suit = suit
         self.colored = colored
         self.rank = rank
         self.value = value
-        self.is_open = False
+        self.is_open = is_open
 
     def __eq__(self, other):
         return self.suit == other.suit and self.colored == other.colored and self.value == other.value
@@ -368,10 +368,10 @@ class Card(object):
 
 
 class Deck(object):
-    def __init__(self, cards):
-        self.state = constants.DeckState.UNOPENED
+    def __init__(self, cards, state=constants.DeckState.UNOPENED, index=None):
+        self.state = state
         self.cards = cards
-        self.index = None  # one-based
+        self.index = index  # one-based
 
     def __repr__(self):
         return ' / '.join([repr(card) for card in self.cards])
@@ -381,18 +381,24 @@ class Deck(object):
 
 
 class Duel(object):
-    def __init__(self, player_red, player_black, index):
+    def __init__(self, player_red, player_black, index, time_created=None, over=False, time_ended=None, player_shouted=None, winner=None, loser=None, result=None, offense=None, defense=None):
         self.player_red = player_red
         self.player_black = player_black
-        self.players = self.player_red, self.player_black
-        self.time_created = time.time()
+        self.time_created = time_created or time.time()
         self.index = index  # one-based
-        self.over = False
-        self.time_ended = None
-        self.player_shouted = None
-        self.winner = None
-        self.loser = None
-        self.result = None
+        self.over = over
+        self.time_ended = time_ended
+        self.player_shouted = player_shouted
+        self.winner = winner
+        self.loser = loser
+        self.result = result
+        self.offense = offense
+        self.defense = defense
+    
+    def players(self):
+        return self.player_red, self.player_black
+
+    def decide_offense(self):
         if self.index % 2 == 1:
             self.offense, self.defense = self.player_red, self.player_black
         else:
@@ -465,7 +471,7 @@ class Duel(object):
         else:
             print("Cards will be opened in {} seconds!\n".format(constants.DELAY_BEFORE_CARD_OPEN))
             time.sleep(constants.DELAY_BEFORE_CARD_OPEN)
-        for player in self.players:
+        for player in self.players():
             player.open_next_card()
 
     def process_action(self, player_shouted, action):
@@ -592,7 +598,7 @@ class Duel(object):
         offense_delegate = self.offense.deck_in_duel.delegate()
         defense_delegate = self.defense.deck_in_duel.delegate()
         start = time.time()
-        while not (all([player_has_shouted_dare[player.alias] for player in self.players])
+        while not (all([player_has_shouted_dare[player.alias] for player in self.players()])
                    or any(has_red_shouted_other.values()) or any(
                     has_black_shouted_other.values()) or time.time() - start > constants.TIME_LIMIT_FOR_ACTION):
             pass
@@ -600,7 +606,7 @@ class Duel(object):
 
         # identify and process the action
         has_found_action = False
-        if all([player_has_shouted_dare[player.alias] for player in self.players]):
+        if all([player_has_shouted_dare[player.alias] for player in self.players()]):
             self.process_action(None, constants.Action.DARE)
             has_found_action = True
         for action, has_happened in has_red_shouted_other.items():
