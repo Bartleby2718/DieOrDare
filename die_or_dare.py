@@ -727,10 +727,13 @@ class OutputHandler(object):
         self.states.append(game_state_in_json)
         self.messages.append(message)
         game = jsonpickle.decode(game_state_in_json)
+        duel = game.duel_ongoing
         row_format = '{:^15}' * constants.DECK_PER_PILE
-        red_first_line = '{:^105}{:^30}'.format('{} ({})'.format(game.player_red.name, game.player_red.alias),
-                                                'Score {} / Die {}'.format(game.player_red.num_victory,
-                                                                           game.player_red.num_shout_die))
+        red_fense = '' if duel is None else ('Offense' if game.player_red == duel.offense else 'Defense')
+        red_first_line = '{:^30}{:^75}{:^30}'.format(red_fense,
+                                                     '{} ({})'.format(game.player_red.name, game.player_red.alias),
+                                                     'Score {} / Die {}'.format(game.player_red.num_victory,
+                                                                                game.player_red.num_shout_die))
         print(red_first_line)
         red_decks = game.player_red.decks
         red_numbers = ['< #{} >'.format(deck.index) if deck.state == constants.DeckState.IN_DUEL else '#{}'.format(
@@ -750,6 +753,8 @@ class OutputHandler(object):
                      red_decks]
         print(row_format.format(*red_lasts))
         print()
+        print('{:^135}'.format('' if duel is None else '[Duel #{}]'.format(duel.index)))
+        print()
         black_decks = game.player_black.decks
         black_lasts = ['' if deck.state == constants.DeckState.UNOPENED else repr(deck.cards[2]) for deck in
                        black_decks]
@@ -768,9 +773,10 @@ class OutputHandler(object):
                 deck.index) for deck in black_decks]
         black_number_line = row_format.format(*black_numbers)
         print(black_number_line)
-        black_first_line = '{:^105}{:^30}'.format('{} (Player Black)'.format(game.player_black.name),
-                                                  'Score {} / Die {}'.format(game.player_black.num_victory,
-                                                                             game.player_black.num_shout_die))
+        black_fense = '' if duel is None else ('Offense' if game.player_black == duel.offense else 'Defense')
+        black_first_line = '{:^30}{:^75}{:^30}'.format(black_fense, '{} (Player Black)'.format(game.player_black.name),
+                                                       'Score {} / Die {}'.format(game.player_black.num_victory,
+                                                                                  game.player_black.num_shout_die))
         print(black_first_line)
         if message:
             message_delimited = message.split('\n')
