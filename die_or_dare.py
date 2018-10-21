@@ -715,7 +715,15 @@ class OutputHandler(object):
         self.states = []
         self.messages = []
 
-    def display(self, game_state_in_json, message='', duration=0):
+    def display(self, game_state_in_json=None, message='', duration=0):
+        if game_state_in_json is None:
+            if message:
+                message_delimited = message.split('\n')
+                print('Message:  {}'.format(message_delimited[0]))
+                for line in message_delimited[1:]:
+                    print('{:10}{}'.format('', line))
+            time.sleep(duration)
+            return
         self.states.append(game_state_in_json)
         self.messages.append(message)
         game = jsonpickle.decode(game_state_in_json)
