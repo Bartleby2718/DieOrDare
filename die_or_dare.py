@@ -788,6 +788,11 @@ class OutputHandler(object):
         with open(file_name, 'w') as file:
             file.write(content)
 
+    def import_from_json(self, file_name):
+        with open(file_name) as file:
+            content = file.read()
+            self.states = jsonpickle.decode(content)
+
             
 if __name__ == '__main__':
     game = Game(*sys.argv[1:])
