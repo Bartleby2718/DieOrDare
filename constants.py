@@ -34,7 +34,8 @@ class DeckState(enum.Enum):
     FINISHED = 'Finished'
 
 
-class DuelResult(enum.Enum):
+class DuelState(enum.Enum):
+    ONGOING = 'Ongoing'
     DRAWN = 'Drawn'
     FINISHED = 'Finished'
     DIED = 'Died'
