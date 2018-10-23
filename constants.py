@@ -29,7 +29,7 @@ class Action(enum.Enum):
 
 
 class DeckState(enum.Enum):
-    UNOPENED = 'Unopened'
+    UNDISCLOSED = 'Undisclosed'
     IN_DUEL = 'In Duel'
     FINISHED = 'Finished'
 
