@@ -35,6 +35,7 @@ class DeckState(enum.Enum):
 
 
 class DuelState(enum.Enum):
+    UNSTARTED = 'Unstarted'
     ONGOING = 'Ongoing'
     DRAWN = 'Drawn'
     FINISHED = 'Finished'
