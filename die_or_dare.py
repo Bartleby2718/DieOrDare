@@ -1,13 +1,13 @@
 import abc
 import constants
 import datetime
+import functools
 import itertools
 import jsonpickle
 import keyboard
 import random
 import sys
 import time
-import functools
 
 
 class Input(abc.ABC):
@@ -374,12 +374,12 @@ class ReverseOrder(PlayerOrder):
 
 
 class Game(object):
-    def __init__(self, player_red=None, player_black=None, over=False, time_created=None, time_ended=None,
+    def __init__(self, player_red=None, player_black=None, over=False, time_started=None, time_ended=None,
                  winner=None, loser=None, result=None, duels=None, *args):
         self.player_red = player_red  # takes the red pile and gets to go first
         self.player_black = player_black
         self.over = over
-        self.time_created = time_created or time.time()
+        self.time_started = time_started or time.time()
         self.time_ended = time_ended
         self.winner = winner
         self.loser = loser
@@ -482,6 +482,7 @@ class Game(object):
             game.open_cards()
         elif: round_ == 3:
             game.open_cards()
+        return '', constants.DELAY_AFTER_DUEL_ENDS
 
     def accept(self):
         if round_ == 1:
@@ -524,9 +525,6 @@ class Game(object):
             print("{} wins! The game has ended as {} shouted draw wrong.".format(self.winner.name, self.loser.name))
 
         # cleanup
-        for player in self.players():
-            player.deck_in_duel.state = constants.DeckState.FINISHED
-            player.deck_in_duel = None
         time.sleep(constants.DELAY_AFTER_DUEL_ENDS)
 
     def end(self, state, winner=None, loser=None):
@@ -601,19 +599,21 @@ class DeckRandomizer(object):
 
 
 class Player(object):
-    def __init__(self, name='', num_victory=0, num_shout_die=0, num_shout_done=0, num_shout_draw=0, decks=None,
-                 deck_in_duel=None, pile=None, key_settings=None, alias=None):
+    def __init__(self, name='', num_victory=0, num_shout_die=0, num_shout_done=0, num_shout_draw=0, decks=None, pile=None, key_settings=None, alias=None):
         self.name = name
         self.num_victory = num_victory
         self.num_shout_die = num_shout_die
         self.num_shout_done = num_shout_done
         self.num_shout_draw = num_shout_draw
         self.decks = decks
-        self.deck_in_duel = deck_in_duel
         self.pile = pile
         self.key_settings = key_settings or {action: '' for action in constants.Action}
         self.alias = alias
 
+    def deck_in_duel(self):
+        decks_in_duel = [deck for deck in self.decks if deck.is_in_duel()]
+        return decks_in_duel.pop() if decks_in_duel else None
+    
     def initialize_decks(self, joker_value_strategy, delegate_strategy):
         random.shuffle(self.pile)
         decks = []
@@ -644,8 +644,8 @@ class Player(object):
         pass
 
     def open_next_card(self):
-        to_open_index = len([card for card in self.deck_in_duel.cards if card.is_open])
-        self.deck_in_duel.cards[to_open_index].open_up()
+        to_open_index = len([card for card in self.deck_in_duel().cards if card.is_open])
+        self.deck_in_duel().cards[to_open_index].open_up()
 
 
 class HumanPlayer(Player):
@@ -873,12 +873,12 @@ class Duel(object):
     # Option 1: offense_deck, defense_deck = ~, Duel(offense_deck, defense_deck)
     # Option 2: Duel(offense, defense) -> decide_decks_for_duel
     # Option 3: Duel(player_red, player_black) -> decide_decks_for_duel -> current situation
-    def __init__(self, player_red, player_black, index, time_created=None, round_=1, over=False, time_ended=None,
+    def __init__(self, player_red, player_black, index, time_started=None, round_=1, over=False, time_ended=None,
                  player_shouted=None, winner=None, loser=None, state=None, offense=None, defense=None):
         self.player_red = player_red
         self.player_black = player_black
         self.index = index  # one-based
-        self.time_created = time_created or time.time()
+        self.time_started = time_started or time.time()
         self.round_ = round_
         self.over = over
         self.time_ended = time_ended
@@ -917,8 +917,6 @@ class Duel(object):
             offense_deck, defense_deck = self.offense.decide_decks_for_duel(self.defense.decks)
         offense_deck.state = constants.DeckState.IN_DUEL
         defense_deck.state = constants.DeckState.IN_DUEL
-        self.offense.deck_in_duel = offense_deck
-        self.defense.deck_in_duel = defense_deck
 
     def display_decks(self):
         row_format = '{:^15}' * constants.DECK_PER_PILE
@@ -1030,7 +1028,7 @@ class Duel(object):
         """compare the sums and decides the winner"""
         print('All right. No actions.')
         sum_red = sum([card.value for card in self.player_red.deck_in_duel.cards])
-        sum_black = sum([card.value for card in self.player_black.deck_in_duel.cards])
+        sum_black = sum([card.value for card in self.player_black.deck_in_duel().cards])
         if sum_red > sum_black:
             self.end(constants.DuelState.FINISHED, winner=self.player_red)
         elif sum_red < sum_black:
@@ -1062,8 +1060,8 @@ class Duel(object):
 
     def process_shout_draw(self, player_shouted):
         player_shouted.num_shout_draw += 1
-        player_red_deck_sum = sum([card.value for card in self.player_red.deck_in_duel.cards])
-        player_black_deck_sum = sum([card.value for card in self.player_black.deck_in_duel.cards])
+        player_red_deck_sum = sum([card.value for card in self.player_red.deck_in_duel().cards])
+        player_black_deck_sum = sum([card.value for card in self.player_black.deck_in_duel().cards])
         if player_red_deck_sum == player_black_deck_sum:
             self.end(constants.DuelState.DRAWN, winner=player_shouted)
         else:
@@ -1132,9 +1130,9 @@ class Duel(object):
 
         # start timing and wait for key press
         print('\nWhat will you two do?')
-        # num_open = len([card for card in self.offense.deck_in_duel.cards if card.is_open])
-        # offense_delegate = self.offense.deck_in_duel.delegate()
-        # defense_delegate = self.defense.deck_in_duel.delegate()
+        # num_open = len([card for card in self.offense.deck_in_duel().cards if card.is_open])
+        # offense_delegate = self.offense.deck_in_duel().delegate()
+        # defense_delegate = self.defense.deck_in_duel().delegate()
         # print(self.offense.name,
         #       ComputerPlayer.get_chances(self.offense.decks, offense_delegate, self.defense.decks, defense_delegate,
         #                                  num_open))
@@ -1374,9 +1372,9 @@ class OutputHandler(object):
         red_name = last_game.player_red.name
         black_class = last_game.player_black.__class__.__name__
         black_name = last_game.player_black.name
-        time_created_str = last_game.time_created
-        time_created_float = float(time_created_str)
-        datetime_started = datetime.datetime.fromtimestamp(time_created_float)
+        time_started_str = last_game.time_started
+        time_started_float = float(time_started_str)
+        datetime_started = datetime.datetime.fromtimestamp(time_started_float)
         datetime_str = datetime.datetime.strftime(datetime_started, '%Y%m%d%H%M%S')
         file_name = '{}({}){}({}){}.json'.format(red_class, red_name, black_class, black_name, datetime_str)
         content = jsonpickle.encode(self.states)
@@ -1398,9 +1396,7 @@ if __name__ == '__main__':
     while not game.is_over():
         duel = game.to_next_duel()
         while not duel.is_over():
-            game.prepare()
-            message = '\n\n\nStarting Duel {}...\n{}, your turn!'.format(duel.index, duel.offense.name))
-            duration = constants.DELAY_AFTER_TURN_NOTICE
+            message, duration = game.prepare()
             output_handler.display(game.to_json(), message, duration)
             
             duel.decide_decks_for_duel()
@@ -1417,5 +1413,5 @@ if __name__ == '__main__':
     game.display_result()
 
 # TODO pile 어떻게? player, game, constants
-# TODO methodify?   player.deck_in_duel, duel.player_red, duel.player_black
+# TODO methodify? duel.player_red, duel.player_black
 # TODO flag 도입해야 모든 시점을 표현할 수 있을 듯?
