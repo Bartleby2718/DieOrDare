@@ -384,6 +384,7 @@ class Game(object):
         self.winner = winner
         self.loser = loser
         self.result = result
+        self.duel_index = -1  # zero based
         if duels is None:
             duels = []
             for i in range(constants.DECK_PER_PILE):
@@ -393,7 +394,6 @@ class Game(object):
                     new_duel = Duel(player_black, player_red, i + 1) 
                 duels.append(new_duel)
             self.duels = tuple(duels)
-        self.duel_index = -1  # zero based
         red_joker = Card(None, True, constants.JOKER, None)
         black_joker = Card(None, False, constants.JOKER, None)
         ranks = constants.RANKS
@@ -501,6 +501,17 @@ class Game(object):
         else:
             raise TypeError('Invalid input')
     
+    def decide_decks_for_duel(self):
+        duel = self.duel_ongoing()
+        # Skip choosing deck in the last duel
+        if self.duel_index == constants.DECK_PER_PILE - 1:
+            offense_deck = duel.offense.undisclosed_decks().pop()
+            defense_deck = duel.defense.undisclosed_decks().pop()
+        else:
+            offense_deck, defense_deck = duel.offense.decide_decks_for_duel(duel.defense.decks)
+        offense_deck.enter_duel()
+        defense_deck.enter_duel()
+
     def cleanup_duel(self):
         duel_state = self.duel_ongoing().state
         # identify why the duel ended
@@ -608,6 +619,9 @@ class Player(object):
         decks_in_duel = [deck for deck in self.decks if deck.is_in_duel()]
         return decks_in_duel.pop() if decks_in_duel else None
     
+    def undisclosed_decks(self):
+        return list([deck for deck in self.decks if deck.is_undisclosed()])
+    
     def initialize_decks(self, joker_value_strategy, delegate_strategy):
         random.shuffle(self.pile)
         decks = []
@@ -638,7 +652,7 @@ class Player(object):
         pass
 
     def open_next_card(self):
-        to_open_index = len([card for card in self.deck_in_duel().cards if card.is_open])
+        to_open_index = len([card for card in self.deck_in_duel().cards if card.is_open()])
         self.deck_in_duel().cards[to_open_index].open_up()
 
 
@@ -689,7 +703,7 @@ class HumanPlayer(Player):
 
     def decide_decks_for_duel(self, opponent_decks):
         # Choose offense deck
-        my_undisclosed_decks = [deck for deck in self.decks if deck.is_undisclosed()]
+        my_undisclosed_decks = self.undisclosed_decks()
         offense_deck = DeckTextInput.from_human(self.name, False, my_undisclosed_decks).pop()
 
         # Display chance of winning
@@ -738,12 +752,12 @@ class ComputerPlayer(Player):
         my_hidden_cards = []
         for deck in my_decks:
             for card in deck.cards:
-                if not card.is_open and card.value <= my_delegate.value:
+                if not card.is_open() and card.value <= my_delegate.value:
                     my_hidden_cards.append(card)
         opponent_hidden_cards = []
         for deck in opponent_decks:
             for card in deck.cards:
-                if not card.is_open and card.value <= opponent_delegate.value:
+                if not card.is_open() and card.value <= opponent_delegate.value:
                     opponent_hidden_cards.append(card)
 
         # calculate the odds that you will lose the duel
@@ -779,7 +793,7 @@ class ComputerPlayer(Player):
         values = []
         for deck in decks:
             for card in deck.cards:
-                if deck.is_undisclosed() or not card.is_open:
+                if deck.is_undisclosed() or not card.is_open():
                     values.append(card.value)
         return tuple(set(values))
 
@@ -788,7 +802,7 @@ class ComputerPlayer(Player):
         values = []
         for deck in decks:
             for card in deck.cards:
-                if deck.state != constants.DeckState.UNDISCLOSED and card.is_open:
+                if not deck.is_undisclosed() and card.is_open():
                     values.append(card.value)
         return tuple(set(values))
 
@@ -815,18 +829,18 @@ class DumbComputerPlayer(ComputerPlayer):
 
 
 class Card(object):
-    def __init__(self, suit, colored, rank, value=None, is_open=False):
+    def __init__(self, suit, colored, rank, value=None, open_=False):
         self.suit = suit
         self.colored = colored
         self.rank = rank
         self.value = value
-        self.is_open = is_open
+        self.open_ = open_
 
     def __eq__(self, other):
         return self.suit == other.suit and self.colored == other.colored and self.value == other.value
 
     def __repr__(self):
-        if self.is_open:
+        if self.is_open():
             if self.suit is None:
                 return '{} {}'.format(self.value, '★' if self.colored else '☆')
             else:
@@ -835,7 +849,10 @@ class Card(object):
             return '?'
 
     def open_up(self):
-        self.is_open = True
+        self.open_ = True
+
+    def is_open(self):
+        return self.open_
 
     def is_joker(self):
         return self.suit is None
@@ -853,6 +870,9 @@ class Deck(object):
     def delegate(self):
         return self.cards[0]
     
+    def enter_duel(self):
+        self.state = constants.DeckState.IN_DUEL
+    
     def is_undisclosed(self):
         return self.state == constants.DeckState.UNDISCLOSED
     
@@ -863,10 +883,6 @@ class Deck(object):
 
 
 class Duel(object):
-    # TODO: How to change the implementation of Duel
-    # Option 1: offense_deck, defense_deck = ~, Duel(offense_deck, defense_deck)
-    # Option 2: Duel(offense, defense) -> decide_decks_for_duel
-    # Option 3: Duel(player_red, player_black) -> decide_decks_for_duel -> current situation
     def __init__(self, player_red, player_black, index, time_started=None, round_=1, over=False, time_ended=None,
                  player_shouted=None, winner=None, loser=None, state=None, offense=None, defense=None):
         self.player_red = player_red
@@ -905,16 +921,6 @@ class Duel(object):
     def is_finished(self):
         return self.state not in [constants.DuelState.UNSTARTED, constants.DuelState.ONGOING]
     
-    def decide_decks_for_duel(self):
-        # Skip choosing deck in the last duel
-        if self.index == constants.DECK_PER_PILE - 1:
-            offense_deck = [deck for deck in self.offense.decks if deck.is_undisclosed()].pop()
-            defense_deck = [deck for deck in self.defense.decks if deck.is_undisclosed()].pop()
-        else:
-            offense_deck, defense_deck = self.offense.decide_decks_for_duel(self.defense.decks)
-        offense_deck.state = constants.DeckState.IN_DUEL
-        defense_deck.state = constants.DeckState.IN_DUEL
-
     def display_decks(self):
         row_format = '{:^15}' * constants.DECK_PER_PILE
         red_first_line = '{:^105}{:^30}'.format('{} ({})'.format(self.player_red.name, self.player_red.alias),
@@ -1045,7 +1051,7 @@ class Duel(object):
         player_shouted.num_shout_done += 1
         values = set(
             [card.value for deck in player_shouted.decks if deck.state != constants.DeckState.UNDISCLOSED for card in
-             deck.cards if card.is_open])
+             deck.cards if card.is_open()])
         if len(values) == len(constants.RANKS):
             self.end(constants.DuelState.ABORTED_BY_CORRECT_DONE, player_shouted)
         else:
@@ -1126,7 +1132,7 @@ class Duel(object):
 
         # start timing and wait for key press
         print('\nWhat will you two do?')
-        # num_open = len([card for card in self.offense.deck_in_duel().cards if card.is_open])
+        # num_open = len([card for card in self.offense.deck_in_duel().cards if card.is_open()])
         # offense_delegate = self.offense.deck_in_duel().delegate()
         # defense_delegate = self.defense.deck_in_duel().delegate()
         # print(self.offense.name,
@@ -1292,12 +1298,12 @@ class OutputHandler(object):
 
     def display(self, game_state_in_json=None, message='', duration=0):
         if game_state_in_json is None:
-          if message:
-              message_delimited = message.split('\n')
-              print('Message:  {}'.format(message_delimited[0]))
-              for line in message_delimited[1:]:
-                  print('{:10}{}'.format('', line))
-          time.sleep(duration)
+            if message:
+                message_delimited = message.split('\n')
+                print('Message:  {}'.format(message_delimited[0]))
+                for line in message_delimited[1:]:
+                    print('{:10}{}'.format('', line))
+            time.sleep(duration)
         self.states.append(game_state_in_json)
         self.messages.append(message)
         game = jsonpickle.decode(game_state_in_json)
@@ -1395,7 +1401,7 @@ if __name__ == '__main__':
             message, duration = game.prepare()
             output_handler.display(game.to_json(), message, duration)
             game.accept()
-            duel.decide_decks_for_duel()
+            game.decide_decks_for_duel()
             duel.display_decks()
             duel.open_next_cards()
             duel.display_decks()
@@ -1409,5 +1415,4 @@ if __name__ == '__main__':
     game.display_result()
 
 # TODO pile 어떻게? player, game, constants
-# TODO methodify? duel.player_red, duel.player_black
 # TODO flag 도입해야 모든 시점을 표현할 수 있을 듯?
