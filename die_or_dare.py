@@ -414,7 +414,7 @@ class Game(object):
         return self.player_red, self.player_black
 
     def duel_ongoing(self):
-        return self.duels[duel_index]
+        return self.duels[self.duel_index]
     
     def to_next_duel(self):
         self.duel_index += 1
@@ -477,7 +477,7 @@ class Game(object):
             duel.start()  #contradictory?
         elif round_ == 2:
             game.open_cards()
-        elif: round_ == 3:
+        elif round_ == 3:
             game.open_cards()
         return '', constants.DELAY_AFTER_DUEL_ENDS
 
@@ -645,7 +645,7 @@ class Player(object):
 class HumanPlayer(Player):
     def __init__(self, prompt, forbidden_name=''):
         super().__init__()
-        self.name = NameTextInput.from_human(self, prompt, forbidden_name).pop()
+        self.name = NameTextInput.from_human(prompt, forbidden_name).pop()
 
     def set_keys(self, blacklist=None):
         blacklist = blacklist or []
@@ -854,7 +854,7 @@ class Deck(object):
         return self.cards[0]
     
     def is_undisclosed(self):
-        return self.is_undisclosed()
+        return self.state == constants.DeckState.UNDISCLOSED
     
     def is_in_duel(self):
         return self.state == constants.DeckState.IN_DUEL
@@ -893,6 +893,9 @@ class Duel(object):
     def players(self):
         return self.player_red, self.player_black
 
+    def is_over(self):
+        return self.over
+    
     def to_next_round(self):
         self.index += 1
     
@@ -949,8 +952,7 @@ class Duel(object):
                                    self.player_black.decks]
         print(row_format.format(*black_undisclosed_delegate))
         black_numbers = [
-            '< #{} >'.format(deck. + 1) if deck.is_in_duel() else '#{}'.format(deck.index + 1) for
-            deck in self.player_black.decks]
+            ('< #{} >' if deck.is_in_duel() else '#{}').format(deck.index + 1) for deck in self.player_black.decks]
         black_number_line = row_format.format(*black_numbers)
         print(black_number_line)
         black_first_line = '{:^105}{:^30}'.format('{} (Player Black)'.format(self.player_black.name),
@@ -1021,7 +1023,7 @@ class Duel(object):
     def process_no_shouts(self):
         """compare the sums and decides the winner"""
         print('All right. No actions.')
-        sum_red = sum([card.value for card in self.player_red.deck_in_duel.cards])
+        sum_red = sum([card.value for card in self.player_red.deck_in_duel().cards])
         sum_black = sum([card.value for card in self.player_black.deck_in_duel().cards])
         if sum_red > sum_black:
             self.end(constants.DuelState.FINISHED, winner=self.player_red)
@@ -1308,7 +1310,7 @@ class OutputHandler(object):
                                                                                 game.player_red.num_shout_die))
         print(red_first_line)
         red_decks = game.player_red.decks
-        red_numbers = ['< #{} >'.format(deck. + 1) if deck.is_in_duel() else '#{}'.format(
+        red_numbers = [('< #{} >' if deck.is_in_duel() else '#{}').format(
             deck.index + 1) for deck in red_decks]
         red_number_line = row_format.format(*red_numbers)
         print(red_number_line)
