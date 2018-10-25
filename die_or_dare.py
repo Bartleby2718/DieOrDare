@@ -475,31 +475,76 @@ class Game(object):
         duel.to_next_round()
         if round_ == 1:
             duel.start()  #contradictory?
+            game.decks_for_duel()
         elif round_ == 2:
             game.open_cards()
         elif round_ == 3:
             game.open_cards()
         return '', constants.DELAY_AFTER_DUEL_ENDS
 
-    def accept(self):
-        if round_ == 1:
-            intra_duel_input = game.decks_for_duel()
-        elif round_ == 2:
-            intra_duel_input = game.die_or_dare()
-        elif round_ == 3 and num_humans == n and other_condition:
-            intra_duel_input = game.done_or_draw()
-        else:
-            pass
+    def get_actions(self):
+            if round_ == 1:
+                valid_actions = [None]
+                intra_duel_input = game.accept(valid_actions)
+            elif round_ == 2:
+                valid_actions = [None, constants.Action.DIE, constants.Action.DARE]
+                intra_duel_input = game.accept(valid_actions)
+            elif round_ == 3 and num_humans == n and other_condition:
+                valid_actions = [None, constants.Action.DRAW]
+                intra_duel_input = game.accept(valid_actions)
+            else:
+                pass
 
     def process(self, intra_duel_input):
+        duel = self.duel_ongoing()
         if isinstance(intra_duel_input, DeckChoiceInput):
-            pass
+            offense_deck, defense_deck = intra_duel_input
+            offense_deck.enter_duel()
+            defense_deck.enter_duel()
+            if offense.is_done():
+                duel.end()
+                self.end(constants.GameResult.DONE, winner=self.duel_ongoing().player_shouted)
+                message = "{0} wins! The game has ended as {0} first shouted done correctly.".format(self.winner.name)
+                duration = 0
+                return message, duration
+            elif defense.is_done():
+                duel.end()
+                self.end()
+                message = ''
+                duration = 0
+                return message, duration
+            else:
+                # do nothing and move on to next round and accept action
+                return message, duration
         elif instance(intra_duel_input, ActionInput):
-            pass
-        elif instance(intra_duel_input, IgnoredInput):
-            pass
-        else:
-            raise TypeError('Invalid input')
+            if offense.just_shouted_die():
+                duel.end()
+                message = ''
+                duration = 0
+                # offense died, so move on to the next duel
+                return message, duration
+            elif defense.just_shouted_die():
+                duel.end()
+                message = ''
+                duration = 0
+                # defense died, so move on to the next duel
+                return message, duration
+            else:
+                if all([card.is_open() for card in duel.offense.deck_in_duel().cards]):
+                    self.compare_sums()
+                    duel.end()
+                    if 3 wins:
+                        self.end()
+                        message = "{0} wins! The game has ended as {0} first scored {1} points.".format(self.winner.name, constants.REQUIRED_WIN)
+                        duration = 0
+                        return message, duration
+                    else:
+                        # do nothing and move on to next rou d to open next cards
+                        return message, duration
+                    elif instance(intra_duel_input, IgnoredInput):
+                        pass  # don't remember 
+                    else:
+                        raise TypeError('Invalid input')
     
     def decide_decks_for_duel(self):
         duel = self.duel_ongoing()
