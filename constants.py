@@ -1,9 +1,25 @@
 import enum
 
+
+class Rank(enum.Enum):
+    Ace = 1
+    Two = 2
+    Three = 3
+    Four = 4
+    Five = 5
+    Six = 6
+    Seven = 7
+    Eight = 8
+    Nine = 9
+    Ten = 10
+    Jack = 11
+    Queen = 12
+    King = 13
+
+    
 DECK_PER_PILE = 9
 CARD_PER_DECK = 3
-RANKS = ('Ace', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King')
-HIGHEST_VALUE = NUM_CARD = len(RANKS)
+HIGHEST_VALUE = NUM_CARD = len(Rank)
 RED_SUITS = ('Hearts', 'Diamonds')
 BLACK_SUITS = ('Spades', 'Clubs')
 JOKER = 'Joker'
