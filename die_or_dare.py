@@ -395,14 +395,19 @@ class Game(object):
                 duels.append(new_duel)
             self.duels = tuple(duels)
         red_joker = Card(None, True, constants.JOKER, None)
+        red_pile = [red_joker]
+        for suit in constants.RED_SUITS:
+            for rank in constants.Rank:
+                new_card = Card(suit, True, rank.name, rank.value)
+                red_pile.append(new_card)
+        self.red_pile = red_pile
         black_joker = Card(None, False, constants.JOKER, None)
-        ranks = constants.RANKS
-        red_suits = constants.RED_SUITS
-        black_suits = constants.BLACK_SUITS
-        self.red_pile = [red_joker] + [Card(suit, True, rank, ranks.index(rank) + 1) for suit in red_suits for rank in
-                                       ranks]
-        self.black_pile = [black_joker] + [Card(suit, False, rank, ranks.index(rank) + 1) for suit in black_suits for
-                                           rank in ranks]
+        black_pile = [black_joker]
+        for suit in constants.BLACK_SUITS:
+            for rank in constants.Rank:
+                new_card = Card(suit, False, rank.name, rank.value)
+                black_pile.append(new_card)
+        self.black_pile = black_pile
         num_computers = len(args)
         if num_computers in range(3):
             self.num_human_players = 2 - num_computers
