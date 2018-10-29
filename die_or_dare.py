@@ -311,22 +311,64 @@ class DeckTextInput(DeckInput):
         return cls(user_input_to_deck.get(input_value))
 
 
-class ActionKeyboardInput(Input):
+class DeckChoiceInput(Input):
+    def __init__(self, offense_deck, defense_deck):
+        self.offense_deck = offense_deck
+        self.defense_deck = defense_deck
+
+    def is_valid(self, *args, **kwargs):
+        pass
+
+    def pop(self):
+        return self.offense_deck, self.defense_deck
+
+
+class ActionInput(Input):
+    def __init__(self, shouts):
+        self.keys_pressed = shouts
+
+    def is_valid(self, *args, **kwargs):
+        pass
+
+    def pop(self):
+        pass
+
+
+class IgnoredInput(Input):
+    def is_valid(self, *args, **kwargs):
+        pass
+
+    def pop(self):
+        pass
+
+
+class Shout(object):
+    def __init__(self, player, action):
+        self.player = player
+        self.action = action
+
+
+class ActionKeypressInput(ActionInput):
     def __init__(self, keys_pressed):
         self.keys_pressed = keys_pressed
 
     @classmethod
     def from_human(cls, keys_to_hook=None, timeout=0):
+        def when_key_pressed(x):
+            keys_pressed.append(x.namme)
+            keyboard.unhook(x.name)
+
         keys_pressed = []
-        keys_to_hook = keys_to_hook or []
+        keys_to_hook = [] if keys_to_hook is None else keys_to_hook
         for key in keys_to_hook:
-            keyboard.on_press_key(key, lambda: keys_pressed.append(key))
+            keyboard.on_press_key(key, lambda x: when_key_pressed(x))
         over = False
         start = time.time()
         while not over:
+            # TODO: exit immediately if non-dare action or double dare is found
             over = time.time() - start > timeout
         keyboard.unhook_all()
-        return cls(keys_pressed)
+        return cls(''.join([keyboard_event.name for keyboard_event in keys_pressed]))
 
     def is_valid(self, *args, **kwargs):
         pass
@@ -390,25 +432,29 @@ class Game(object):
             duels = []
             for i in range(constants.DECK_PER_PILE):
                 if i % 2 == 0:
-                    new_duel = Duel(player_red, player_black, i + 1) 
+                    new_duel = Duel(player_red, player_black, i)
                 else:
-                    new_duel = Duel(player_black, player_red, i + 1) 
+                    new_duel = Duel(player_black, player_red, i)
                 duels.append(new_duel)
             self.duels = tuple(duels)
+        self.duel_ongoing = None
         red_joker = Card(None, True, constants.JOKER, None)
         red_pile = [red_joker]
         for suit in constants.RED_SUITS:
             for rank in constants.Rank:
-                new_card = Card(suit, True, rank)
+                new_card = Card(suit, True, rank.name, rank.value, False)
                 red_pile.append(new_card)
         self.red_pile = red_pile
-        black_joker = Card(None, False, constants.JOKER, None)
+        black_joker = Card(None, False, constants.JOKER, None, False)
         black_pile = [black_joker]
         for suit in constants.BLACK_SUITS:
             for rank in constants.Rank:
-                new_card = Card(suit, False, rank)
+                new_card = Card(suit, False, rank.name, rank.value, False)
                 black_pile.append(new_card)
         self.black_pile = black_pile
+        self.valid_actions = {1: (constants.Action.DONE,),
+                              2: (constants.Action.DONE, constants.Action.DIE, constants.Action.DARE),
+                              3: (constants.Action.DONE, constants.Action.DRAW), }
         num_computers = len(args)
         if num_computers in range(3):
             self.num_human_players = 2 - num_computers
@@ -419,16 +465,6 @@ class Game(object):
     def players(self):
         return self.player_red, self.player_black
 
-    def duel_ongoing(self):
-        return self.duels[self.duel_index]
-    
-    def to_next_duel(self):
-        self.duel_index += 1
-        return self.duel_ongoing()
-    
-    def is_over(self):
-        return self.over
-    
     def initialize_players(self):
         if self.num_human_players == 0:
             class1_name = sys.argv[1]
@@ -477,94 +513,189 @@ class Game(object):
         player_red_keys = list(self.player_red.key_settings.values())
         self.player_black.set_keys(blacklist=player_red_keys)
 
+    def open_next_cards(self):
+        if self.is_over():
+            print("\nLet's open the last cards anyway.\n")
+        else:
+            print("Cards will be opened in {} seconds!\n".format(constants.DELAY_BEFORE_CARD_OPEN))
+            time.sleep(constants.DELAY_BEFORE_CARD_OPEN)
+        for player in self.players():
+            player.open_next_card()
+
+    def to_next_duel(self):
+        self.duel_index += 1
+        self.duel_ongoing = self.duels[self.duel_index]
+        return self.duel_ongoing
+
+    def is_over(self):
+        return self.over
+
     def prepare(self):
+        duel = self.duel_ongoing
         duel.to_next_round()
-        if round_ == 1:
-            duel.start()  #contradictory?
-            game.decks_for_duel()
-        elif round_ == 2:
-            game.open_cards()
-        elif round_ == 3:
-            game.open_cards()
+        if duel.round_ == 0:
+            duel.start()
+        elif duel.round_ == 1:
+            pass  # delegate is always open
+        elif duel.round_ == 2:
+            self.open_next_cards()
+        elif duel.round_ == 3:
+            self.open_next_cards()
         return '', constants.DELAY_AFTER_DUEL_ENDS
 
-    def get_actions(self):
-            if round_ == 1:
-                valid_actions = [None]
-                intra_duel_input = game.accept(valid_actions)
-            elif round_ == 2:
-                valid_actions = [None, constants.Action.DIE, constants.Action.DARE]
-                intra_duel_input = game.accept(valid_actions)
-            elif round_ == 3 and num_humans == n and other_condition:
-                valid_actions = [None, constants.Action.DRAW]
-                intra_duel_input = game.accept(valid_actions)
+    def accept(self):
+        duel_round = self.duel_ongoing.round_
+        if duel_round == 0:
+            return self.decide_decks_for_duel()
+        else:
+            if duel_round in range(1, 4):
+                valid_actions = self.valid_actions.get(duel_round)
+                return self.get_actions(valid_actions)
             else:
-                pass
+                raise ValueError()
 
-    # def process(self, intra_duel_input):
-    #     duel = self.duel_ongoing()
-    #     if isinstance(intra_duel_input, DeckChoiceInput):
-    #         offense_deck, defense_deck = intra_duel_input
-    #         offense_deck.enter_duel()
-    #         defense_deck.enter_duel()
-    #         if offense.is_done():
-    #             duel.end()
-    #             self.end(constants.GameResult.DONE, winner=self.duel_ongoing().player_shouted)
-    #             message = "{0} wins! The game has ended as {0} first shouted done correctly.".format(self.winner.name)
-    #             duration = 0
-    #             return message, duration
-    #         elif defense.is_done():
-    #             duel.end()
-    #             self.end()
-    #             message = ''
-    #             duration = 0
-    #             return message, duration
-    #         else:
-    #             # do nothing and move on to next round and accept action
-    #             return message, duration
-    #     elif instance(intra_duel_input, ActionInput):
-    #         if offense.just_shouted_die():
-    #             duel.end()
-    #             message = ''
-    #             duration = 0
-    #             # offense died, so move on to the next duel
-    #             return message, duration
-    #         elif defense.just_shouted_die():
-    #             duel.end()
-    #             message = ''
-    #             duration = 0
-    #             # defense died, so move on to the next duel
-    #             return message, duration
-    #         else:
-    #             if all([card.is_open() for card in duel.offense.deck_in_duel().cards]):
-    #                 self.compare_sums()
-    #                 duel.end()
-    #                 if 3 wins:
-    #                     self.end()
-    #                     message = "{0} wins! The game has ended as {0} first scored {1} points.".format(self.winner.name, constants.REQUIRED_WIN)
-    #                     duration = 0
-    #                     return message, duration
-    #                 else:
-    #                     # do nothing and move on to next rou d to open next cards
-    #                     return message, duration
-    #                 elif instance(intra_duel_input, IgnoredInput):
-    #                     pass  # don't remember 
-    #                 else:
-    #                     raise TypeError('Invalid input')
-    
+    def get_actions(self, valid_actions, timeout=0):
+        keys = ''
+        for player in self.players():
+            if player.num_shout_die < constants.MAX_DIE and constants.Action.DIE in valid_actions:
+                key = player.key_settings.get(constants.Action.DIE)
+                keys += key
+            if player.num_shout_done < constants.MAX_DONE and constants.Action.DONE in valid_actions:
+                key = player.key_settings.get(constants.Action.DONE)
+                keys += key
+            if player.num_shout_draw < constants.MAX_DRAW and constants.Action.DRAW in valid_actions:
+                key = player.key_settings.get(constants.Action.DRAW)
+                keys += key
+        return ActionKeypressInput.from_human(keys, timeout)
+
+    def process(self, intra_duel_input):
+        duel = self.duel_ongoing
+        if isinstance(intra_duel_input, DeckChoiceInput):
+            return self.process_deck_choice_input(intra_duel_input)
+        elif isinstance(intra_duel_input, ActionInput):  # TODO: extract method
+            # See who did which action
+            shouts = []
+            valid_actions = self.valid_actions.get(duel.round_)
+            keys_pressed = intra_duel_input.pop()
+            for player in self.players():
+                # Note: `key` is not the key as in key-value pair.
+                key_to_action = dict({key: action for action, key in player.key_settings.items()})
+                for key in keys_pressed:
+                    action = key_to_action.get(key)
+                    if action in valid_actions:
+                        shout = Shout(player, action)
+                        shouts.append(shout)
+
+            # Get only the first shout for each player
+            red_shout_heard = False
+            black_shout_heard = False
+            for shout in shouts:
+                if not red_shout_heard and shout.player == self.player_red:
+                    red_shout_heard = True
+                    self.player_red.recent_action = shout.action
+                elif not black_shout_heard and shout.player == self.player_black:
+                    black_shout_heard = True
+                    self.player_black.recent_action = shout.action
+                if red_shout_heard and black_shout_heard:
+                    break
+
+            # priority: done > die , draw > dare (offense > defense if not specified)
+            if constants.Action.DONE in valid_actions:
+                for player in duel.players():
+                    if player.recent_action == constants.Action.DONE:
+                        player.num_shout_done += 1
+                        if player.is_done():  # correct done
+                            duel.end(constants.DuelState.ABORTED_BY_CORRECT_DONE, player)
+                            self.end(constants.GameResult.DONE, winner=player)
+                            message = "Duel #{0}: {1} is done, so this duel is aborted.\n{1} wins! The game has ended as {1} first shouted done correctly.".format(
+                                duel.index + 1, player.name)
+                            duration = constants.DELAY_AFTER_GAME_ENDS
+                            return message, duration
+            if constants.Action.DIE in valid_actions:
+                for player in duel.players():
+                    if player.recent_action == constants.Action.DIE:
+                        player.num_shout_die += 1
+                        duel.end(constants.DuelState.DIED, player)
+                        message = "Duel #{}: {} died, so no one gets a point.".format(duel.index + 1, player.name)
+                        duration = constants.DELAY_AFTER_DUEL_ENDS
+                        return message, duration
+            if constants.Action.DRAW in valid_actions:
+                for player in duel.players():
+                    if player.recent_action == constants.Action.DRAW:
+                        # TODO: automate done and draw for non human
+                        player.num_shout_draw += 1
+                        if duel.is_drawn():  # correct draw
+                            duel.end(constants.DuelState.DRAWN, player)
+                            message = "Duel #{}: The sums are equal, but no one shouted draw, so the defense ({}) gets a point.".format(
+                                self.duel_index + 1, self.winner.name)
+                            duration = constants.DELAY_AFTER_DUEL_ENDS
+                            return message, duration
+            # TODO effectively a double dare (modify the else statement below)
+            # if all inputs are invalid, if last round...
+            #      message += 'All right. No actions.'
+            #      if not last round:
+            #          message += '\nNo action counts as a dare'
+            # else:
+            #     message += "Ooh, double dare! Let's open the next cards."
+            # something like self.end(constants.DuelState.DRAWN, winner=self.defense)
+            if constants.Action.DARE in valid_actions:
+                if all(player.just_shouted_dare() for player in self.players()):
+                    # TODO: if all cards open:
+                    message = "Ooh, double dare! Let's open the next cards."
+                    duration = constants.DELAY_BEFORE_CARD_OPEN
+                    return message, duration
+            else:
+                if all([card.is_open() for card in duel.offense.deck_in_duel.cards]):
+                    sum_offense = sum([card.value for card in duel.offense.deck_in_duel.cards])
+                    sum_defense = sum([card.value for card in duel.defense.deck_in_duel.cards])
+                    if sum_offense > sum_defense:
+                        duel.end(constants.DuelState.FINISHED, winner=duel.offense)
+                    elif sum_offense < sum_defense:
+                        duel.end(constants.DuelState.FINISHED, winner=duel.defense)
+                    else:
+                        duel.end(constants.DuelState.DRAWN, winner=duel.defense)
+                    if duel.winner.num_victory == constants.REQUIRED_WIN:
+                        self.end(constants.GameResult.FINISHED, winner=duel.winner)
+                        message = "{0} wins! The game has ended as {0} first scored {1} points.".format(
+                            self.winner.name, constants.REQUIRED_WIN)
+                        duration = 0
+                        return message, duration
+            message = ''
+            duration = constants.DELAY_BEFORE_CARD_OPEN
+            # do nothing and move on to next rou d to open next cards
+            return message, duration
+        else:
+            return ValueError('Invalid input')
+
+    def process_deck_choice_input(self, intra_duel_input):
+        offense = self.duel_ongoing.offense
+        defense = self.duel_ongoing.defense
+        offense.deck_in_duel, defense.deck_in_duel = intra_duel_input.pop()
+
+        offense.deck_in_duel_index = offense.deck_in_duel.index
+        defense.deck_in_duel_index = offense.deck_in_duel.index
+
+        offense.deck_in_duel.state = constants.DeckState.IN_DUEL
+        defense.deck_in_duel.state = constants.DeckState.IN_DUEL
+
+        offense.deck_in_duel.opponent_deck_index = defense.deck_in_duel.index
+        defense.deck_in_duel.opponent_deck_index = offense.deck_in_duel.index
+        message = 'The two decks have been chosen.'
+        duration = 3
+        return message, duration
+
     def decide_decks_for_duel(self):
-        duel = self.duel_ongoing()
+        duel = self.duel_ongoing
         # Skip choosing deck in the last duel
         if self.duel_index == constants.DECK_PER_PILE - 1:
             offense_deck = duel.offense.undisclosed_decks().pop()
             defense_deck = duel.defense.undisclosed_decks().pop()
         else:
             offense_deck, defense_deck = duel.offense.decide_decks_for_duel(duel.defense.decks)
-        offense_deck.enter_duel()
-        defense_deck.enter_duel()
+        return DeckChoiceInput(offense_deck, defense_deck)
 
     def cleanup_duel(self):
-        duel_state = self.duel_ongoing().state
+        duel_state = self.duel_ongoing.state
         # identify why the duel ended
         if duel_state in [constants.DuelState.DRAWN, constants.DuelState.FINISHED]:
             for player in self.players():
@@ -574,21 +705,21 @@ class Game(object):
                                                                                                 constants.REQUIRED_WIN))
                     break
         elif duel_state == constants.DuelState.ABORTED_BY_CORRECT_DONE:
-            self.end(constants.GameResult.DONE, winner=self.duel_ongoing().player_shouted)
+            self.end(constants.GameResult.DONE, winner=self.duel_ongoing.player_shouted)
             print("{0} wins! The game has ended as {0} first shouted done correctly.".format(self.winner.name))
         elif duel_state == constants.DuelState.ABORTED_BY_WRONG_DONE:
-            self.end(constants.GameResult.FORFEITED_BY_WRONG_DONE, loser=self.duel_ongoing().player_shouted)
+            self.end(constants.GameResult.FORFEITED_BY_WRONG_DONE, loser=self.duel_ongoing.player_shouted)
             print("{} wins! The game has ended as {} shouted done wrong.".format(self.winner.name, self.loser.name))
         elif duel_state == constants.DuelState.ABORTED_BY_WRONG_DRAW:
-            self.end(constants.GameResult.FORFEITED_BY_WRONG_DRAW, loser=self.duel_ongoing().player_shouted)
+            self.end(constants.GameResult.FORFEITED_BY_WRONG_DRAW, loser=self.duel_ongoing.player_shouted)
             print("{} wins! The game has ended as {} shouted draw wrong.".format(self.winner.name, self.loser.name))
 
         # cleanup
         time.sleep(constants.DELAY_AFTER_DUEL_ENDS)
 
-    def end(self, state, winner=None, loser=None):
+    def end(self, result, winner=None, loser=None):
         self.over = True
-        self.state = state
+        self.result = result
         self.time_ended = time.time()
         self.winner = winner
         self.loser = loser
@@ -602,6 +733,7 @@ class Game(object):
     def to_json(self):
         return jsonpickle.encode(self)
 
+
 class RoundInput(Input):
     def __init__(self, round_):
         self.round_ = round_
@@ -612,22 +744,6 @@ class RoundInput(Input):
     @abc.abstractmethod
     def pop(self):
         pass
-
-
-class RoundKeyboardInput(RoundInput):
-    def __init__(self, round_, keys_pressed=None):
-        super().__init__(round_)
-        self.keys_pressed = keys_pressed or []
-
-    def is_valid(self, *args, **kwargs):
-        try:
-            tuple(self.keys_pressed)
-        except TypeError:
-            return False
-        return super().is_valid()
-
-    def pop(self):
-        return tuple(self.keys_pressed)
 
 
 class DeckRandomizer(object):
@@ -655,8 +771,11 @@ class DeckRandomizer(object):
 
 
 class Player(object):
-    def __init__(self, name='', num_victory=0, num_shout_die=0, num_shout_done=0, num_shout_draw=0, decks=None, pile=None, key_settings=None, alias=None):
+    def __init__(self, name='', deck_in_duel_index=None, num_victory=0, num_shout_die=0, num_shout_done=0,
+                 num_shout_draw=0, decks=None, pile=None, key_settings=None, alias=None, recent_action=None):
         self.name = name
+        self.deck_in_duel_index = deck_in_duel_index
+        self.deck_in_duel = None
         self.num_victory = num_victory
         self.num_shout_die = num_shout_die
         self.num_shout_done = num_shout_done
@@ -665,14 +784,11 @@ class Player(object):
         self.pile = pile
         self.key_settings = key_settings or {action: '' for action in constants.Action}
         self.alias = alias
+        self.recent_action = recent_action
 
-    def deck_in_duel(self):
-        decks_in_duel = [deck for deck in self.decks if deck.is_in_duel()]
-        return decks_in_duel.pop() if decks_in_duel else None
-    
     def undisclosed_decks(self):
         return list([deck for deck in self.decks if deck.is_undisclosed()])
-    
+
     def initialize_decks(self, joker_value_strategy, delegate_strategy):
         random.shuffle(self.pile)
         decks = []
@@ -703,8 +819,42 @@ class Player(object):
         pass
 
     def open_next_card(self):
-        to_open_index = len([card for card in self.deck_in_duel().cards if card.is_open()])
-        self.deck_in_duel().cards[to_open_index].open_up()
+        deck = self.decks[self.deck_in_duel_index]
+        card_to_open = deck.cards[deck.card_to_open_index]
+        card_to_open.open_up()
+        if deck.card_to_open_index == 1:
+            deck.card_to_open_index += 1
+        elif deck.card_to_open_index == 2:
+            deck.card_to_open_index = None
+
+    def is_done(self):
+        values = {}
+        for deck in self.decks:
+            if deck.state != constants.DeckState.UNDISCLOSED:
+                for card in deck.cards:
+                    if card.is_open():
+                        values.add(card.value)
+        return len(values) == constants.NUM_CARD
+
+    def to_array(self):
+        decks = [deck.to_array() for deck in self.decks]
+        decks = list(itertools.chain.from_iterable(decks))
+        num_victory = -1 if self.num_victory is None else self.num_victory
+        num_shout_die = -1 if self.num_shout_die is None else self.num_shout_die
+        deck_in_duel_index = -1 if self.deck_in_duel_index is None else self.deck_in_duel_index
+        others = [num_victory, num_shout_die, deck_in_duel_index]
+        return numpy.array(decks + others)
+
+    @classmethod
+    def from_array(cls, array):
+        decks_array = numpy.array(array[0:9 * 19])
+        decks_reshaped = decks_array.reshape(9, -1)
+        decks = list(Deck.from_array(deck_array) for deck_array in decks_reshaped)
+        num_victory = None if array[9 * 19] == -1 else array[9 * 19]
+        num_shout_die = None if array[9 * 19 + 1] == -1 else array[9 * 19 + 1]
+        deck_in_duel_index = None if array[9 * 19 + 2] == -1 else array[9 * 19 + 2]
+        return cls(decks=decks, num_victory=num_victory, num_shout_die=num_shout_die,
+                   deck_in_duel_index=deck_in_duel_index)
 
 
 class HumanPlayer(Player):
@@ -911,7 +1061,7 @@ class Card(object):
     def to_array(self):
         suit = -1 if self.suit is None else self.suit.value
         colored = -1 if self.colored is None else int(self.colored)
-        rank = -1 if self.rank is None else self.rank.value
+        rank = -1 if self.rank is None else constants.Rank[self.rank].value
         value = -1 if self.value is None else self.value
         open_ = -1 if self.open_ is None else int(self.open_)
         list_ = [suit, colored, rank, value, open_]
@@ -929,7 +1079,8 @@ class Card(object):
 
 
 class Deck(object):
-    def __init__(self, cards, state=constants.DeckState.UNDISCLOSED, index=None, opponent_deck_index=None, card_to_open_index=None):
+    def __init__(self, cards, state=constants.DeckState.UNDISCLOSED, index=None, opponent_deck_index=None,
+                 card_to_open_index=1):
         self.state = state
         self.cards = cards
         self.index = index  # zero based
@@ -941,47 +1092,48 @@ class Deck(object):
 
     def delegate(self):
         return self.cards[0]
-    
-    def enter_duel(self):
-        self.state = constants.DeckState.IN_DUEL
-        self.card_to_open_index = 1
-    
+
     def is_undisclosed(self):
         return self.state == constants.DeckState.UNDISCLOSED
-    
+
     def is_in_duel(self):
         return self.state == constants.DeckState.IN_DUEL
 
     def to_array(self):
-        state = -1 if self.state is None else self.state.value
         cards = [] if self.cards is None else numpy.array([card.to_array() for card in self.cards]).flatten()
+        state = -1 if self.state is None else self.state.value
         index = -1 if self.index is None else self.index
         opponent_deck_index = -1 if self.opponent_deck_index is None else self.opponent_deck_index
         card_to_open_index = -1 if self.card_to_open_index is None else self.card_to_open_index
-        list_ = [state, *cards, index, opponent_deck_index, card_to_open_index]
+        list_ = [*cards, state, index, opponent_deck_index, card_to_open_index]
         return numpy.array(list_)
 
     @classmethod
     def from_array(cls, array):
-        state = array[0]
-        cards = [array[1:6], array[6:11], array[11:16]]
+        cards = [array[0:5], array[5:10], array[10:15]]
+        state = array[15]
         index = array[16]
         opponent_deck_index = array[17]
         card_to_open_index = array[18]
+        cards_flattened = numpy.array(cards).flatten()
+        if cards_flattened == []:
+            cards = None
+        else:
+            cards = list([Card.from_array(card_array) for card_array in cards])
         state = None if state == -1 else constants.DeckState(state)
-        cards = None if cards == [[], [], []] else list([Card.from_array(card_in_array) for card_in_array in cards])
-        index = None if index == -1 else self.index
+        index = None if index == -1 else index
         opponent_deck_index = None if opponent_deck_index == -1 else opponent_deck_index
         card_to_open_index = None if card_to_open_index == -1 else card_to_open_index
         return cls(cards, state, index, opponent_deck_index, card_to_open_index)
 
 
 class Duel(object):
-    def __init__(self, player_red, player_black, index, time_started=None, round_=1, over=False, time_ended=None,
-                 player_shouted=None, winner=None, loser=None, state=None, offense=None, defense=None):
+    def __init__(self, player_red, player_black, index, time_started=None, round_=-1, over=False, time_ended=None,
+                 player_shouted=None, winner=None, loser=None, state=constants.DuelState.UNSTARTED, offense=None,
+                 defense=None):
         self.player_red = player_red
         self.player_black = player_black
-        self.index = index  # zero based
+        self.index = index
         self.time_started = time_started or time.time()
         self.round_ = round_
         self.over = over
@@ -989,7 +1141,7 @@ class Duel(object):
         self.player_shouted = player_shouted
         self.winner = winner
         self.loser = loser
-        self.state = state or constants.DuelState.UNSTARTED
+        self.state = state
         if self.index % 2 == 0:
             self.offense = offense or self.player_red
             self.defense = defense or self.player_black
@@ -999,24 +1151,29 @@ class Duel(object):
 
     def start(self):
         self.state = constants.DuelState.ONGOING
-        self.offense.deck_in_duel.opponent_deck_index = self.defense.deck_in_duel.index
-        self.defense.deck_in_duel.opponent_deck_index = self.offense.deck_in_duel.index
-    
+
     def players(self):
-        return self.player_red, self.player_black
+        return self.offense, self.defense
+
+    def is_drawn(self):
+        sum_offense = sum([card.value for card in self.offense.deck_in_duel.cards])
+        sum_defense = sum([card.value for card in self.defense.deck_in_duel.cards])
+        return sum_offense == sum_defense
 
     def is_over(self):
         return self.over
-    
+
     def to_next_round(self):
-        self.index += 1
-    
+        self.round_ += 1
+        for player in self.players():
+            player.recent_action = None
+
     def is_ongoing(self):
         return self.state == constants.DuelState.ONGOING
-    
+
     def is_finished(self):
         return self.state not in [constants.DuelState.UNSTARTED, constants.DuelState.ONGOING]
-    
+
     def display_decks(self):
         row_format = '{:^15}' * constants.DECK_PER_PILE
         red_first_line = '{:^105}{:^30}'.format('{} ({})'.format(self.player_red.name, self.player_red.alias),
@@ -1029,7 +1186,7 @@ class Duel(object):
         red_number_line = row_format.format(*red_numbers)
         print(red_number_line)
         red_undisclosed_delegates = [repr(deck.cards[0]) if deck.is_undisclosed() else '' for deck in
-                                  self.player_red.decks]
+                                     self.player_red.decks]
         print(row_format.format(*red_undisclosed_delegates))
         red_opened_delegates = ['' if deck.is_undisclosed() else repr(deck.cards[0]) for deck in
                                 self.player_red.decks]
@@ -1051,7 +1208,7 @@ class Duel(object):
                                   self.player_black.decks]
         print(row_format.format(*black_opened_delegates))
         black_undisclosed_delegate = [repr(deck.cards[0]) if deck.is_undisclosed() else '' for deck in
-                                   self.player_black.decks]
+                                      self.player_black.decks]
         print(row_format.format(*black_undisclosed_delegate))
         black_numbers = [
             ('< #{} >' if deck.is_in_duel() else '#{}').format(deck.index + 1) for deck in self.player_black.decks]
@@ -1068,45 +1225,6 @@ class Duel(object):
                     print("{}'s all values open! Shout done!".format(player.name))
                 elif len(undisclosed_values) <= 3:
                     print("{}'s undisclosed values: {}".format(player.name, undisclosed_values))
-
-    def open_next_cards(self):
-        if self.is_over():
-            print("\nLet's open the last cards anyway.\n")
-        else:
-            print("Cards will be opened in {} seconds!\n".format(constants.DELAY_BEFORE_CARD_OPEN))
-            time.sleep(constants.DELAY_BEFORE_CARD_OPEN)
-        for player in self.players():
-            player.open_next_card()
-
-    def process(self, input_instance):
-        if not isinstance(input_instance, RoundInput):
-            raise TypeError
-        keys_pressed = input_instance.pop()
-        keys_pressed = 'azsdfo'
-        red_action = None
-        black_action = None
-        red_key_to_action = {value: key for key, value in self.player_red.key_settings}
-        black_key_to_action = {value: key for key, value in self.player_black.key_settings}
-        for key in keys_pressed:
-            if red_action is None:
-                red_action = red_key_to_action.get(key)
-            if red_action is None or black_action is None:
-                black_action = black_key_to_action.get(key)
-            if red_action is not None or black_action is not None:
-                break
-        if red_action is None and black_action is None:
-            # ended with timeout
-            if self.round_ == 2:
-                # no actions, treat as double dare
-                self.process_double_dare()
-            elif self.round_ == 3:
-                self.process_no_shouts()
-        else:
-            if red_action is not None:
-                # red did something
-                self.process_action(self.player_red, red_action)
-            else:
-                self.process_action(self.player_black, black_action)
 
     def process_action(self, player_shouted, action):
         if action is None:
@@ -1125,8 +1243,8 @@ class Duel(object):
     def process_no_shouts(self):
         """compare the sums and decides the winner"""
         print('All right. No actions.')
-        sum_red = sum([card.value for card in self.player_red.deck_in_duel().cards])
-        sum_black = sum([card.value for card in self.player_black.deck_in_duel().cards])
+        sum_red = sum([card.value for card in self.player_red.deck_in_duel.cards])
+        sum_black = sum([card.value for card in self.player_black.deck_in_duel.cards])
         if sum_red > sum_black:
             self.end(constants.DuelState.FINISHED, winner=self.player_red)
         elif sum_red < sum_black:
@@ -1148,7 +1266,7 @@ class Duel(object):
         values = set(
             [card.value for deck in player_shouted.decks if deck.state != constants.DeckState.UNDISCLOSED for card in
              deck.cards if card.is_open()])
-        if len(values) == len(constants.RANKS):
+        if len(values) == len(constants.Rank):
             self.end(constants.DuelState.ABORTED_BY_CORRECT_DONE, player_shouted)
         else:
             if player_shouted.num_shout_done > constants.MAX_DONE:
@@ -1158,8 +1276,8 @@ class Duel(object):
 
     def process_shout_draw(self, player_shouted):
         player_shouted.num_shout_draw += 1
-        player_red_deck_sum = sum([card.value for card in self.player_red.deck_in_duel().cards])
-        player_black_deck_sum = sum([card.value for card in self.player_black.deck_in_duel().cards])
+        player_red_deck_sum = sum([card.value for card in self.player_red.deck_in_duel.cards])
+        player_black_deck_sum = sum([card.value for card in self.player_black.deck_in_duel.cards])
         if player_red_deck_sum == player_black_deck_sum:
             self.end(constants.DuelState.DRAWN, winner=player_shouted)
         else:
@@ -1205,7 +1323,8 @@ class Duel(object):
         red_right_before_done = len(red_opened_values) == constants.NUM_CARD - 1 and len(red_undisclosed_values) == 1
         black_opened_values = ComputerPlayer.opened_values(self.player_black.decks)
         black_undisclosed_values = ComputerPlayer.undisclosed_values(self.player_black.decks)
-        black_right_before_done = len(black_opened_values) == constants.NUM_CARD - 1 and len(black_undisclosed_values) == 1
+        black_right_before_done = len(black_opened_values) == constants.NUM_CARD - 1 and len(
+            black_undisclosed_values) == 1
         if red_right_before_done and black_right_before_done:
             self.end(constants.DuelState.ABORTED_BEFORE_DOUBLE_DONE, winner=self.player_black)
 
@@ -1228,9 +1347,9 @@ class Duel(object):
 
         # start timing and wait for key press
         print('\nWhat will you two do?')
-        # num_open = len([card for card in self.offense.deck_in_duel().cards if card.is_open()])
-        # offense_delegate = self.offense.deck_in_duel().delegate()
-        # defense_delegate = self.defense.deck_in_duel().delegate()
+        # num_open = len([card for card in self.offense.deck_in_duel.cards if card.is_open()])
+        # offense_delegate = self.offense.deck_in_duel.delegate()
+        # defense_delegate = self.defense.deck_in_duel.delegate()
         # print(self.offense.name,
         #       ComputerPlayer.get_chances(self.offense.decks, offense_delegate, self.defense.decks, defense_delegate,
         #                                  num_open))
@@ -1403,7 +1522,7 @@ class OutputHandler(object):
         self.states.append(game_state_in_json)
         self.messages.append(message)
         game = jsonpickle.decode(game_state_in_json)
-        duel = game.duel_ongoing()
+        duel = game.duel_ongoing
         row_format = '{:^15}' * constants.DECK_PER_PILE
         red_fense = '' if duel is None else ('Offense' if game.player_red == duel.offense else 'Defense')
         red_first_line = '{:^30}{:^75}{:^30}'.format(red_fense,
@@ -1417,7 +1536,7 @@ class OutputHandler(object):
         red_number_line = row_format.format(*red_numbers)
         print(red_number_line)
         red_undisclosed_delegates = [repr(deck.cards[0]) if deck.is_undisclosed() else '' for deck in
-                                  red_decks]
+                                     red_decks]
         print(row_format.format(*red_undisclosed_delegates))
         red_opened_delegates = ['' if deck.is_undisclosed() else repr(deck.cards[0]) for deck in
                                 red_decks]
@@ -1442,7 +1561,7 @@ class OutputHandler(object):
                                   deck in black_decks]
         print(row_format.format(*black_opened_delegates))
         black_undisclosed_delegate = [repr(deck.cards[0]) if deck.is_undisclosed() else '' for
-                                   deck in black_decks]
+                                      deck in black_decks]
         print(row_format.format(*black_undisclosed_delegate))
         black_numbers = [
             '< #{} >'.format(deck.index + 1) if deck.is_in_duel() else '#{}'.format(
@@ -1494,19 +1613,22 @@ if __name__ == '__main__':
     while not game.is_over():
         duel = game.to_next_duel()
         while not duel.is_over():
+            duel.to_next_round()
             message, duration = game.prepare()
             output_handler.display(game.to_json(), message, duration)
-            game.accept()
-            game.decide_decks_for_duel()
-            duel.display_decks()
-            duel.open_next_cards()
-            duel.display_decks()
-            duel.get_and_process_input()
-            duel.display_decks()
-            duel.open_next_cards()
-            duel.display_decks()
-            if not duel.over:
-                duel.get_and_process_final_input()
+            user_input = game.accept()
+            message, duration = game.process(user_input)
+            output_handler.display(game.to_json(), message, duration)
+            # game.decide_decks_for_duel()
+            # duel.display_decks()
+            # duel.open_next_cards()
+            # duel.display_decks()
+            # duel.get_and_process_input()
+            # duel.display_decks()
+            # duel.open_next_cards()
+            # duel.display_decks()
+            # if not duel.over:
+            #     duel.get_and_process_final_input()
         game.cleanup_duel()
     game.display_result()
 
