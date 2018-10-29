@@ -17,16 +17,14 @@ def main():
     print("\nAll right, {} and {}. Let's get started!\nLet's flip a coin to decide who will be the Player Red!".format(
         player1.name, player2.name))
     player_red, player_black = RandomPlayerOrder(player1, player2).pop()
-    ranks = constants.RANKS
-    red_joker = Card(None, True, constants.JOKER, None)
+    ranks = constants.Rank
+    red_joker = Card(None, True, constants.JOKER, None, False)
     red_suits = constants.RED_SUITS
-    player_red.pile = [red_joker] + [Card(suit, True, rank, ranks.index(rank) + 1) for suit in red_suits for rank in
-                                     ranks]
+    player_red.pile = [red_joker] + [Card(suit, True, rank.name, rank.value, False) for suit in red_suits for rank in ranks]
     player_red.alias = constants.PLAYER_RED
-    black_joker = Card(None, False, constants.JOKER, None)
+    black_joker = Card(None, False, constants.JOKER, None, False)
     black_suits = constants.BLACK_SUITS
-    player_black.pile = [black_joker] + [Card(suit, False, rank, ranks.index(rank) + 1) for suit in black_suits for
-                                         rank in ranks]
+    player_black.pile = [black_joker] + [Card(suit, False, rank.name, rank.value, False) for suit in black_suits for rank in ranks]
     player_black.alias = constants.PLAYER_BLACK
     print('{}, you are the Player Red, so you will go first.'.format(player_red.name))
     print('{}, you are the Player Black.'.format(player_black.name))
@@ -55,6 +53,26 @@ def main():
                                       player_red.joker_location_strategy).pop()
     player_black.decks = DeckRandomizer(player_black.pile, player_black.joker_value_strategy,
                                         player_black.joker_location_strategy).pop()
+
+
+
+
+    while not game.is_over():
+        duel = game.to_next_duel()
+        while not duel.is_over():
+            duel.to_next_round()
+            message, duration = game.prepare()
+            output_handler.display(game.to_json(), message, duration)
+            user_input = game.accept()
+            message, duration = game.process(user_input)
+            output_handler.display(game.to_json(), message, duration)
+
+
+
+
+
+
+
     while not game.over:
         game.duel_index += 1
         duel = Duel(game.player_red, game.player_black, game.duel_index)
@@ -63,7 +81,7 @@ def main():
         duration = constants.DELAY_AFTER_TURN_NOTICE
         game.duel_ongoing = duel
         output_handler.display(jsonpickle.encode(game), message, duration)
-        duel.decide_decks_for_duel()
+        game.decide_decks_for_duel()
         output_handler.display(jsonpickle.encode(game), 'The two decks have been chosen!')
         # round 2
         duel.open_next_cards()
