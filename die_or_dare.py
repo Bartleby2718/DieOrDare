@@ -37,6 +37,8 @@ class NameInput(Input):
         self.name = name
 
     def is_valid(self):
+        if self.name is None:
+            return False
         return self.name.isalnum()
 
     @Input.validate
@@ -50,9 +52,10 @@ class NameTextInput(NameInput):
         name = input(prompt)
         while not name.isalnum() or name == forbidden_name:
             if name == forbidden_name:
-                print("You can't use {}. Choose another name.".format(forbidden_name))
+                print("You can't use {}. Choose another name.".format(
+                    forbidden_name))
             else:
-                print("Only alphanumeric characters are allowed for the player's name.")
+                print('Only alphanumeric characters are allowed.')
             name = input(prompt)
         return cls(name)
 
@@ -69,7 +72,11 @@ class KeySettingsInput(Input):
         self.key_settings = key_settings
 
     def is_valid(self):
-        all_actions_set = all([self.key_settings.get(action) is not None for action in constants.Action])
+        if self.key_settings is None:
+            return False
+        all_actions_set = all(
+            self.key_settings.get(action) is not None for action in
+            constants.Action)
         num_keys = len(set(self.key_settings.keys()))
         num_values = len(set(self.key_settings.values()))
         all_keys_distinct = num_keys == num_values
@@ -98,20 +105,33 @@ class KeySettingsInput(Input):
 class KeySettingsTextInput(KeySettingsInput):
     @classmethod
     def from_human(cls, player_name, blacklist=None):
-        key_settings = {constants.Action.DARE: '', constants.Action.DIE: '', constants.Action.DONE: '',
-                        constants.Action.DRAW: ''}
-        blacklist = blacklist or []
+        key_settings = {constants.Action.DARE: '', constants.Action.DIE: '',
+                        constants.Action.DONE: '', constants.Action.DRAW: ''}
+        if blacklist is None:
+            blacklist = []
         print('\n{}, decide the set of keys you will use.'.format(player_name))
         for action in key_settings:
-            key = input('{}, which key will you use to indicate {}? '.format(player_name, action.name))
-            is_valid_key = len(key) == 1 and key.islower() and key not in blacklist
+            prompt = '{}, which key will you use to indicate {}? '.format(
+                player_name, action.name)
+            key = input(prompt)
+
+            is_single = len(key) == 1
+            is_lower = key.islower()
+            is_not_duplicate = key not in blacklist
+            is_valid_key = is_single and is_lower and is_not_duplicate
             while not is_valid_key:
                 if key in blacklist:
-                    print("You can't use the following key(s): {}".format(', '.join(blacklist)))
+                    print("You can't use the following key(s): {}".format(
+                        ', '.join(blacklist)))
                 else:
                     print('Use a single lowercase alphabet.')
-                key = input('{}, which key will you use to indicate {}? '.format(player_name, action.name))
-                is_valid_key = len(key) == 1 and key.islower() and key not in blacklist
+                prompt = '{}, which key will you use to indicate {}? '.format(
+                    player_name, action.name)
+                key = input(prompt)
+                is_single = len(key) == 1
+                is_lower = key.islower()
+                is_not_duplicate = key not in blacklist
+                is_valid_key = is_single and is_lower and is_not_duplicate
             key_settings[action] = key
             blacklist.append(key)
         return cls(key_settings)
@@ -129,7 +149,7 @@ class Thirteen(JokerValueStrategy):
     def apply(cards):
         for card in cards:
             if card.is_joker():
-                card.value = constants.HIGHEST_VALUE
+                card.value = max(constants.Rank)
                 break
 
 
@@ -148,7 +168,7 @@ class RandomNumber(JokerValueStrategy):
     def apply(cards):
         for card in cards:
             if card.is_joker():
-                card.value = random.randint(1, constants.HIGHEST_VALUE)
+                card.value = random.randint(1, max(constants.Rank))
                 break
 
 
@@ -171,7 +191,8 @@ class JokerFirst(JokerPositionStrategy):
                 joker_index = i
         if joker_index > -1:
             joker = cards[joker_index]
-            cards_without_joker = [card for card in cards if not card.is_joker()]
+            cards_without_joker = [card for card in cards if
+                                   not card.is_joker()]
             non_joker_bigger = max(cards_without_joker, key=lambda x: x.value)
             if joker.value == non_joker_bigger.value:
                 cards[0], cards[joker_index] = cards[joker_index], cards[0]
@@ -191,11 +212,12 @@ class JokerLast(JokerPositionStrategy):
                 joker_index = i
         if joker_index > -1:
             joker = cards[joker_index]
-            cards_without_joker = [card for card in cards if not card.is_joker()]
-            non_joker_bigger = max(cards_without_joker, key=lambda x: x.value)
-            non_joker_bigger_index = cards.index(non_joker_bigger)
-            if joker.value <= non_joker_bigger.value:
-                cards[0], cards[non_joker_bigger_index] = cards[non_joker_bigger_index], cards[0]
+            cards_without_joker = [card for card in cards if
+                                   not card.is_joker()]
+            bigger = max(cards_without_joker, key=lambda x: x.value)
+            bigger_index = cards.index(bigger)
+            if joker.value <= bigger.value:
+                cards[0], cards[bigger_index] = cards[bigger_index], cards[0]
             for i in range(len(cards)):
                 if cards[i].is_joker():
                     joker_index = i
@@ -215,7 +237,11 @@ class JokerValueStrategyInput(Input):
         self.strategy = strategy
 
     def is_valid(self):
-        return issubclass(self.strategy, JokerValueStrategy) and not issubclass(JokerValueStrategy, self.strategy)
+        if self.strategy is None:
+            return False
+        is_subclass = issubclass(self.strategy, JokerValueStrategy)
+        is_abstract = issubclass(JokerValueStrategy, self.strategy)
+        return is_subclass and not is_abstract
 
     @Input.validate
     def pop(self):
@@ -229,15 +255,20 @@ class JokerValueStrategyTextInput(JokerValueStrategyInput):
         valid_input = False
         input_value = None
         while not valid_input:
-            print('\n{}, enter the number corresponding to the strategy you want.'.format(player_name))
+            print(
+                '\n{}, enter the number corresponding to the strategy you want.'.format(
+                    player_name))
             print('Press 1 to set the value of Joker to 13.')
-            print('Press 2 to set the value of Joker to be equal to the biggest value in the deck.')
+            print(
+                'Press 2 to set the value of Joker to be equal to the biggest value in the deck.')
             print('Press 3 to set the value of Joker to be a random number.')
-            input_value = input('What is your choice? ')
+            prompt = 'What is your choice? '
+            input_value = input(prompt)
             try:
                 input_value = int(input_value)
-                assert number_to_strategy.get(input_value) is not None
-            except (ValueError, AssertionError):
+                if input_value not in number_to_strategy:
+                    raise ValueError('Input not among choices.')
+            except ValueError:
                 print('Invalid input.')
             else:
                 valid_input = True
@@ -249,7 +280,11 @@ class JokerPositionStrategyInput(Input):
         self.strategy = strategy
 
     def is_valid(self):
-        return issubclass(self.strategy, JokerPositionStrategy) and not issubclass(JokerPositionStrategy, self.strategy)
+        if self.strategy is None:
+            return False
+        is_subclass = issubclass(self.strategy, JokerPositionStrategy)
+        is_abstract = issubclass(JokerPositionStrategy, self.strategy)
+        return is_subclass and not is_abstract
 
     @Input.validate
     def pop(self):
@@ -263,15 +298,19 @@ class JokerPositionStrategyTextInput(JokerPositionStrategyInput):
         valid_input = False
         input_value = None
         while not valid_input:
-            print('\n{}, enter the number corresponding to the strategy you want.'.format(player_name))
+            print(
+                '\n{}, enter the number corresponding to the strategy you want.'.format(
+                    player_name))
             print('Enter 1 to reveal the joker as soon as possible.')
             print('Enter 2 to hide the joker as long as possible.')
             print('Enter 3 to put joker anywhere.')
-            input_value = input('What is your choice? ')
+            prompt = 'What is your choice? '
+            input_value = input(prompt)
             try:
                 input_value = int(input_value)
-                assert number_to_strategy.get(input_value) is not None
-            except (ValueError, AssertionError):
+                if input_value not in number_to_strategy:
+                    raise ValueError('Input not among choices.')
+            except ValueError:
                 print('Invalid input.')
             else:
                 valid_input = True
@@ -292,20 +331,27 @@ class DeckInput(Input):
 
 class DeckTextInput(DeckInput):
     @classmethod
-    def from_human(cls, player_name=None, is_opponent=None, undisclosed_decks=None):
-        user_input_to_deck = dict({deck.index: deck for deck in undisclosed_decks})
+    def from_human(cls, player_name=None, is_opponent=None,
+                   undisclosed_decks=None):
+        user_input_to_deck = dict(
+            {deck.index: deck for deck in undisclosed_decks})
         valid_input = False
         input_value = None
         possessive = "your opponent's" if is_opponent else 'your'
-        prompt = '{}, choose one of {} deck (Enter the deck number): '.format(player_name, possessive)
+        prompt = '{}{}, choose one of {} deck (Enter the deck number): '.format(
+            constants.INDENT, player_name, possessive)
         while not valid_input:
             input_value = input(prompt)
             try:
                 input_value = int(input_value) - 1
-                assert user_input_to_deck.get(input_value) is not None
-            except (ValueError, AssertionError):
-                print('Invalid input. Enter a number among {}.'.format(
-                    ', '.join([str(deck.index + 1) for deck in undisclosed_decks])))
+                if input_value not in user_input_to_deck:
+                    raise ValueError('Input not among choices.')
+            except ValueError:
+                choices_generator = [str(deck.index + 1) for deck in
+                                     undisclosed_decks]
+                choices_str = ', '.join(choices_generator)
+                prompt = 'Invalid input. Enter a number among {}.'.format(
+                    choices_str)
             else:
                 valid_input = True
         return cls(user_input_to_deck.get(input_value))
@@ -317,29 +363,16 @@ class DeckChoiceInput(Input):
         self.defense_deck = defense_deck
 
     def is_valid(self, *args, **kwargs):
-        pass
+        for deck in self.offense_deck, self.defense_deck:
+            if isinstance(deck, Deck):
+                if deck.state != constants.DeckState.UNDISCLOSED:
+                    return False
+            else:
+                return False
+        return True
 
     def pop(self):
         return self.offense_deck, self.defense_deck
-
-
-class ActionInput(Input):
-    def __init__(self, shouts):
-        self.keys_pressed = shouts
-
-    def is_valid(self, *args, **kwargs):
-        pass
-
-    def pop(self):
-        pass
-
-
-class IgnoredInput(Input):
-    def is_valid(self, *args, **kwargs):
-        pass
-
-    def pop(self):
-        pass
 
 
 class Shout(object):
@@ -348,30 +381,47 @@ class Shout(object):
         self.action = action
 
 
-class ActionKeypressInput(ActionInput):
+class ShoutInput(Input):
+    def __init__(self, shouts):
+        self.shouts = shouts
+
+    def is_valid(self, *args, **kwargs):
+        try:
+            iter(self.shouts)
+        except TypeError:
+            return False
+        else:
+            return all(isinstance(shout, Shout) for shout in self.shouts)
+
+    def pop(self):
+        return self.shouts
+
+
+class ShoutKeypressInput(ShoutInput):
     def __init__(self, keys_pressed):
+        super().__init__(keys_pressed)
         self.keys_pressed = keys_pressed
 
     @classmethod
     def from_human(cls, keys_to_hook=None, timeout=0):
         def when_key_pressed(x):
-            keys_pressed.append(x.namme)
-            keyboard.unhook(x.name)
+            keyboard.unhook_key(x.name)
+            keys_pressed.append(x.name)
 
         keys_pressed = []
-        keys_to_hook = [] if keys_to_hook is None else keys_to_hook
+        if keys_to_hook is None:
+            keys_to_hook = []
+        else:
+            keys_to_hook = [key for key in keys_to_hook if key is not None]
         for key in keys_to_hook:
-            keyboard.on_press_key(key, lambda x: when_key_pressed(x))
+            keyboard.on_press_key(key, when_key_pressed)
         over = False
         start = time.time()
         while not over:
-            # TODO: exit immediately if non-dare action or double dare is found
             over = time.time() - start > timeout
         keyboard.unhook_all()
-        return cls(''.join([keyboard_event.name for keyboard_event in keys_pressed]))
-
-    def is_valid(self, *args, **kwargs):
-        pass
+        keys_str = ''.join([keyboard_event for keyboard_event in keys_pressed])
+        return cls(keys_str)
 
     def pop(self):
         return self.keys_pressed
@@ -385,9 +435,6 @@ class PlayerOrder(abc.ABC):
         self.second = None
 
     def pop(self):
-        for player in [self.first, self.second]:
-            if player.__class__ == Player or not issubclass(type(player), Player):
-                raise NotImplementedError()
         return self.first, self.second
 
 
@@ -417,12 +464,16 @@ class ReverseOrder(PlayerOrder):
 
 
 class Game(object):
-    def __init__(self, player_red=None, player_black=None, over=False, time_started=None, time_ended=None,
-                 winner=None, loser=None, result=None, duels=None, *args):
+    def __init__(self, player_red=None, player_black=None, over=False,
+                 time_started=None, time_ended=None, winner=None, loser=None,
+                 result=None, duels=None, *args):
         self.player_red = player_red  # takes the red pile and gets to go first
         self.player_black = player_black
         self.over = over
-        self.time_started = time_started or time.time()
+        if time_started is None:
+            self.time_started = time.time()
+        else:
+            self.time_started = time_started
         self.time_ended = time_ended
         self.winner = winner
         self.loser = loser
@@ -431,13 +482,11 @@ class Game(object):
         if duels is None:
             duels = []
             for i in range(constants.DECK_PER_PILE):
-                if i % 2 == 0:
-                    new_duel = Duel(player_red, player_black, i)
-                else:
-                    new_duel = Duel(player_black, player_red, i)
+                new_duel = Duel(player_red, player_black, i)
                 duels.append(new_duel)
             self.duels = tuple(duels)
         self.duel_ongoing = None
+
         red_joker = Card(None, True, constants.JOKER, None)
         red_pile = [red_joker]
         for suit in constants.RED_SUITS:
@@ -445,6 +494,7 @@ class Game(object):
                 new_card = Card(suit, True, rank.name, rank.value, False)
                 red_pile.append(new_card)
         self.red_pile = red_pile
+
         black_joker = Card(None, False, constants.JOKER, None, False)
         black_pile = [black_joker]
         for suit in constants.BLACK_SUITS:
@@ -452,57 +502,15 @@ class Game(object):
                 new_card = Card(suit, False, rank.name, rank.value, False)
                 black_pile.append(new_card)
         self.black_pile = black_pile
-        self.valid_actions = {1: (constants.Action.DONE,),
-                              2: (constants.Action.DONE, constants.Action.DIE, constants.Action.DARE),
-                              3: (constants.Action.DONE, constants.Action.DRAW), }
+
         num_computers = len(args)
         if num_computers in range(3):
             self.num_human_players = 2 - num_computers
         else:
-            raise ValueError('Invalid number of computer players')
-        print("Let's start DieOrDare!")
+            raise ValueError('Invalid number of computer players.')
 
     def players(self):
         return self.player_red, self.player_black
-
-    def initialize_players(self):
-        if self.num_human_players == 0:
-            class1_name = sys.argv[1]
-            class1 = globals().get(class1_name)
-            if type(class1) in ['NoneType', 'ComputerPlayer'] or not issubclass(class1, ComputerPlayer):
-                raise ValueError('Invalid class name for computer player')
-            player1 = class1()
-            class2_name = sys.argv[2]
-            class2 = globals().get(class2_name)
-            if type(class2) in ['NoneType', 'ComputerPlayer'] or not issubclass(class2, ComputerPlayer):
-                raise ValueError('Invalid class name for computer player')
-            forbidden_name = player1.name
-            player2 = class2(forbidden_name)
-        elif self.num_human_players == 1:
-            class1_name = sys.argv[1]
-            class1 = globals().get(class1_name)
-            if type(class1) in ['NoneType', 'ComputerPlayer'] or not issubclass(class1, ComputerPlayer):
-                raise ValueError('Invalid class name for computer player')
-            player1 = class1()
-            human_player1_prompt = 'Player 1, enter your name: '
-            forbidden_name = player1.name
-            player2 = HumanPlayer(human_player1_prompt, forbidden_name)
-        else:
-            human_player1_prompt = 'Player 1, enter your name: '
-            player1 = HumanPlayer(human_player1_prompt)
-            human_player2_prompt = 'Player 2, enter your name: '
-            forbidden_name = player1.name
-            player2 = HumanPlayer(human_player2_prompt, forbidden_name)
-        print("\nAll right, {} and {}. Let's get started!".format(player1.name, player2.name))
-        print("Let's flip a coin to decide who will be the Player Red!")
-        self.player_red, self.player_black = RandomPlayerOrder(player1, player2).pop()
-        self.player_red.pile = game.red_pile
-        self.player_red.alias = constants.PLAYER_RED
-        self.player_black.pile = game.black_pile
-        self.player_black.alias = constants.PLAYER_BLACK
-        time.sleep(1)
-        print('{}, you are the Player Red, so you will go first.'.format(self.player_red.name))
-        print('{}, you are the Player Black.'.format(self.player_black.name))
 
     def initialize_decks(self):
         for player in self.players():
@@ -514,11 +522,6 @@ class Game(object):
         self.player_black.set_keys(blacklist=player_red_keys)
 
     def open_next_cards(self):
-        if self.is_over():
-            print("\nLet's open the last cards anyway.\n")
-        else:
-            print("Cards will be opened in {} seconds!\n".format(constants.DELAY_BEFORE_CARD_OPEN))
-            time.sleep(constants.DELAY_BEFORE_CARD_OPEN)
         for player in self.players():
             player.open_next_card()
 
@@ -533,155 +536,207 @@ class Game(object):
     def prepare(self):
         duel = self.duel_ongoing
         duel.to_next_round()
+        if self.num_human_players == 2:
+            action_prompt = 'What will you two do?\nPress the keys!'
+        else:
+            action_prompt = 'What will you do?\nPress the key!'
         if duel.round_ == 0:
             duel.start()
+            message = 'Duel #{} ready!'.format(duel.index + 1)
+            message += '\nLet\'s get started!'
+            duration = constants.DELAY_BEFORE_ACTION
         elif duel.round_ == 1:
-            pass  # delegate is always open
+            # delegate is always open, so do nothing
+            message = action_prompt
+            duration = constants.DELAY_BEFORE_ACTION
         elif duel.round_ == 2:
             self.open_next_cards()
+            message = action_prompt
+            duration = constants.DELAY_BEFORE_ACTION
         elif duel.round_ == 3:
             self.open_next_cards()
-        return '', constants.DELAY_AFTER_DUEL_ENDS
+            message = action_prompt
+            duration = constants.DELAY_AFTER_DUEL_ENDS
+        else:
+            raise ValueError('Invalid round.')
+        return message, duration
 
     def accept(self):
-        duel_round = self.duel_ongoing.round_
-        if duel_round == 0:
+        duel = self.duel_ongoing
+        round_ = duel.round_
+        if round_ == 0:
             return self.decide_decks_for_duel()
         else:
-            if duel_round in range(1, 4):
-                valid_actions = self.valid_actions.get(duel_round)
-                return self.get_actions(valid_actions)
+            if round_ in [1, 2]:
+                timeout = constants.TIME_LIMIT_FOR_ACTION
+            elif round_ == 3:
+                timeout = constants.TIME_LIMIT_FOR_FINAL_ACTION
             else:
-                raise ValueError()
+                raise ValueError('Invalid round.')
+            return self.get_actions(timeout=timeout)
 
-    def get_actions(self, valid_actions, timeout=0):
-        keys = ''
-        for player in self.players():
-            if player.num_shout_die < constants.MAX_DIE and constants.Action.DIE in valid_actions:
-                key = player.key_settings.get(constants.Action.DIE)
-                keys += key
-            if player.num_shout_done < constants.MAX_DONE and constants.Action.DONE in valid_actions:
-                key = player.key_settings.get(constants.Action.DONE)
-                keys += key
-            if player.num_shout_draw < constants.MAX_DRAW and constants.Action.DRAW in valid_actions:
-                key = player.key_settings.get(constants.Action.DRAW)
-                keys += key
-        return ActionKeypressInput.from_human(keys, timeout)
+    def get_actions(self, timeout=0):
+        duel = self.duel_ongoing
+        round_ = duel.round_
+        if all([isinstance(player, HumanPlayer) for player in self.players()]):
+            keys = []
+            for player in self.players():
+                valid_actions = player.valid_actions(round_)
+                for action in valid_actions:
+                    key = player.key_settings.get(action)
+                    keys.append(key)
+            shout_input = ShoutKeypressInput.from_human(keys, timeout)
+            return shout_input
+        else:
+            shouts = []
+            for player in duel.players():
+                valid_actions = player.valid_actions(round_)
+                is_shout_valid = False
+                shout = None
+                while not is_shout_valid:
+                    shout = player.shout(round_)
+                    action = shout.action
+                    is_shout_valid = action in valid_actions
+                shouts.append(shout)
+            shout_input = ShoutInput(shouts)
+            return shout_input
 
     def process(self, intra_duel_input):
-        duel = self.duel_ongoing
         if isinstance(intra_duel_input, DeckChoiceInput):
             return self.process_deck_choice_input(intra_duel_input)
-        elif isinstance(intra_duel_input, ActionInput):  # TODO: extract method
-            # See who did which action
-            shouts = []
-            valid_actions = self.valid_actions.get(duel.round_)
-            keys_pressed = intra_duel_input.pop()
-            for player in self.players():
-                # Note: `key` is not the key as in key-value pair.
-                key_to_action = dict({key: action for action, key in player.key_settings.items()})
-                for key in keys_pressed:
-                    action = key_to_action.get(key)
-                    if action in valid_actions:
-                        shout = Shout(player, action)
-                        shouts.append(shout)
-
-            # Get only the first shout for each player
-            red_shout_heard = False
-            black_shout_heard = False
-            for shout in shouts:
-                if not red_shout_heard and shout.player == self.player_red:
-                    red_shout_heard = True
-                    self.player_red.recent_action = shout.action
-                elif not black_shout_heard and shout.player == self.player_black:
-                    black_shout_heard = True
-                    self.player_black.recent_action = shout.action
-                if red_shout_heard and black_shout_heard:
-                    break
-
-            # priority: done > die , draw > dare (offense > defense if not specified)
-            if constants.Action.DONE in valid_actions:
-                for player in duel.players():
-                    if player.recent_action == constants.Action.DONE:
-                        player.num_shout_done += 1
-                        if player.is_done():  # correct done
-                            duel.end(constants.DuelState.ABORTED_BY_CORRECT_DONE, player)
-                            self.end(constants.GameResult.DONE, winner=player)
-                            message = "Duel #{0}: {1} is done, so this duel is aborted.\n{1} wins! The game has ended as {1} first shouted done correctly.".format(
-                                duel.index + 1, player.name)
-                            duration = constants.DELAY_AFTER_GAME_ENDS
-                            return message, duration
-            if constants.Action.DIE in valid_actions:
-                for player in duel.players():
-                    if player.recent_action == constants.Action.DIE:
-                        player.num_shout_die += 1
-                        duel.end(constants.DuelState.DIED, player)
-                        message = "Duel #{}: {} died, so no one gets a point.".format(duel.index + 1, player.name)
-                        duration = constants.DELAY_AFTER_DUEL_ENDS
-                        return message, duration
-            if constants.Action.DRAW in valid_actions:
-                for player in duel.players():
-                    if player.recent_action == constants.Action.DRAW:
-                        # TODO: automate done and draw for non human
-                        player.num_shout_draw += 1
-                        if duel.is_drawn():  # correct draw
-                            duel.end(constants.DuelState.DRAWN, player)
-                            message = "Duel #{}: The sums are equal, but no one shouted draw, so the defense ({}) gets a point.".format(
-                                self.duel_index + 1, self.winner.name)
-                            duration = constants.DELAY_AFTER_DUEL_ENDS
-                            return message, duration
-            # TODO effectively a double dare (modify the else statement below)
-            # if all inputs are invalid, if last round...
-            #      message += 'All right. No actions.'
-            #      if not last round:
-            #          message += '\nNo action counts as a dare'
-            # else:
-            #     message += "Ooh, double dare! Let's open the next cards."
-            # something like self.end(constants.DuelState.DRAWN, winner=self.defense)
-            if constants.Action.DARE in valid_actions:
-                if all(player.just_shouted_dare() for player in self.players()):
-                    # TODO: if all cards open:
-                    message = "Ooh, double dare! Let's open the next cards."
-                    duration = constants.DELAY_BEFORE_CARD_OPEN
-                    return message, duration
-            else:
-                if all([card.is_open() for card in duel.offense.deck_in_duel.cards]):
-                    sum_offense = sum([card.value for card in duel.offense.deck_in_duel.cards])
-                    sum_defense = sum([card.value for card in duel.defense.deck_in_duel.cards])
-                    if sum_offense > sum_defense:
-                        duel.end(constants.DuelState.FINISHED, winner=duel.offense)
-                    elif sum_offense < sum_defense:
-                        duel.end(constants.DuelState.FINISHED, winner=duel.defense)
-                    else:
-                        duel.end(constants.DuelState.DRAWN, winner=duel.defense)
-                    if duel.winner.num_victory == constants.REQUIRED_WIN:
-                        self.end(constants.GameResult.FINISHED, winner=duel.winner)
-                        message = "{0} wins! The game has ended as {0} first scored {1} points.".format(
-                            self.winner.name, constants.REQUIRED_WIN)
-                        duration = 0
-                        return message, duration
-            message = ''
-            duration = constants.DELAY_BEFORE_CARD_OPEN
-            # do nothing and move on to next rou d to open next cards
-            return message, duration
+        elif isinstance(intra_duel_input, ShoutKeypressInput):
+            return self.process_shout_keypress(intra_duel_input)
+        elif isinstance(intra_duel_input, ShoutInput):
+            return self.process_shout(intra_duel_input)
         else:
             return ValueError('Invalid input')
+
+    def process_shout_keypress(self, intra_duel_input):
+        duel = self.duel_ongoing
+        round_ = duel.round_
+        # See who did which action
+        shouts = []
+        keys_pressed = intra_duel_input.pop()
+        for key_pressed in keys_pressed:
+            for player in self.players():
+                valid_actions = player.valid_actions(round_)
+                key_to_action = dict(
+                    {key: action for action, key in
+                     player.key_settings.items()})
+                action = key_to_action.get(key_pressed)
+                if action in valid_actions:
+                    shout = Shout(player, action)
+                    shouts.append(shout)
+        shout_input = ShoutInput(shouts)
+        return self.process_shout(shout_input)
+
+    def process_shout(self, shout_input):
+        shouts = shout_input.pop()
+        duel = self.duel_ongoing
+        round_ = duel.round_
+        # Get only the first shout for each player
+        red_shout_heard = False
+        black_shout_heard = False
+        for shout in shouts:
+            if not red_shout_heard and shout.player == self.player_red:
+                red_shout_heard = True
+                self.player_red.recent_action = shout.action
+            elif not black_shout_heard and shout.player == self.player_black:
+                black_shout_heard = True
+                self.player_black.recent_action = shout.action
+            if red_shout_heard and black_shout_heard:
+                break
+        # priority: done > die > draw > dare (then offense > defense)
+        for player in duel.players():
+            valid_actions = player.valid_actions(round_)
+            if constants.Action.DONE in valid_actions:
+                if player.recent_action == constants.Action.DONE:
+                    player.num_shout_done += 1
+                    if player.is_done():  # correct done
+                        duel.end(constants.DuelState.ABORTED_BY_CORRECT_DONE)
+                        self.end(constants.GameResult.DONE, winner=player)
+                        message = "{0} is done, so Duel #{1} is aborted.\n{0} wins! The game has ended as {0} first shouted done correctly.".format(
+                            player.name, duel.index + 1)
+                        duration = constants.DELAY_AFTER_GAME_ENDS
+                        return message, duration
+        for player in duel.players():
+            valid_actions = player.valid_actions(round_)
+            if constants.Action.DIE in valid_actions:
+                if player.recent_action == constants.Action.DIE:
+                    player.num_shout_die += 1
+                    duel.end(constants.DuelState.DIED)
+                    message = "{} died, so no one gets a point.\nDuel #{} ended.".format(
+                        player.name, duel.index + 1)
+                    duration = constants.DELAY_AFTER_DUEL_ENDS
+                    return message, duration
+        for player in duel.players():
+            valid_actions = player.valid_actions(round_)
+            if constants.Action.DRAW in valid_actions:
+                if player.recent_action == constants.Action.DRAW:
+                    player.num_shout_draw += 1
+                    if duel.is_drawn():  # correct draw
+                        duel.end(constants.DuelState.DRAWN, player)
+                        message = "The sums are equal, but no one shouted draw, so the defense ({}) gets a point.\nDuel #{}:ended.".format(
+                            duel.winner.name, duel.index + 1)
+                        duration = constants.DELAY_AFTER_DUEL_ENDS
+                        if duel.winner.num_victory == constants.REQUIRED_WIN:
+                            self.end(constants.GameResult.FINISHED,
+                                     winner=duel.winner)
+                            message += "{0} wins!\nThe game has ended as {0} first scored {1} points.".format(
+                                duel.winner.name, constants.REQUIRED_WIN)
+                            duration = constants.DELAY_AFTER_GAME_ENDS
+                        return message, duration
+        if round_ in [1, 2]:
+            message = "Ooh, double dare!. Let's open the next cards."
+            duration = constants.DELAY_BEFORE_CARD_OPEN
+            message += "\nCards will be opened in {} seconds!".format(duration)
+            # do nothing and move on to next round to open next cards
+            return message, duration
+        elif round_ == 3:
+            sum_offense = sum([card.value for card in
+                               duel.offense.deck_in_duel.cards])
+            sum_defense = sum([card.value for card in
+                               duel.defense.deck_in_duel.cards])
+            if sum_offense > sum_defense:
+                duel.end(constants.DuelState.FINISHED, winner=duel.offense)
+            elif sum_offense < sum_defense:
+                duel.end(constants.DuelState.FINISHED, winner=duel.defense)
+            else:
+                duel.end(constants.DuelState.DRAWN, winner=duel.defense)
+            if duel.winner.num_victory == constants.REQUIRED_WIN:
+                self.end(constants.GameResult.FINISHED, winner=duel.winner)
+                message = "{0} wins!\nThe game has ended as {0} first scored {1} points.".format(
+                    duel.winner.name, constants.REQUIRED_WIN)
+                duration = constants.DELAY_AFTER_GAME_ENDS
+                return message, duration
+            else:
+                message = "{} wins and gets a point.\nDuel #{} ended.".format(
+                    duel.winner.name, duel.index + 1)
+                duration = constants.DELAY_AFTER_DUEL_ENDS
+                return message, duration
+        return ValueError('Invalid round.')
 
     def process_deck_choice_input(self, intra_duel_input):
         offense = self.duel_ongoing.offense
         defense = self.duel_ongoing.defense
+
         offense.deck_in_duel, defense.deck_in_duel = intra_duel_input.pop()
 
         offense.deck_in_duel_index = offense.deck_in_duel.index
-        defense.deck_in_duel_index = offense.deck_in_duel.index
+        defense.deck_in_duel_index = defense.deck_in_duel.index
 
         offense.deck_in_duel.state = constants.DeckState.IN_DUEL
         defense.deck_in_duel.state = constants.DeckState.IN_DUEL
 
         offense.deck_in_duel.opponent_deck_index = defense.deck_in_duel.index
         defense.deck_in_duel.opponent_deck_index = offense.deck_in_duel.index
-        message = 'The two decks have been chosen.'
-        duration = 3
+        if self.duel_index == constants.DECK_PER_PILE - 1:
+            message = 'The last two decks have been chosen automatically.'
+        else:
+            offense_name = self.duel_ongoing.offense.name
+            message = 'Decks have been chosen by {}.'.format(offense_name)
+        message += '\nGet ready!'
+        duration = constants.DELAY_AFTER_DECK_CHOICE
         return message, duration
 
     def decide_decks_for_duel(self):
@@ -691,31 +746,9 @@ class Game(object):
             offense_deck = duel.offense.undisclosed_decks().pop()
             defense_deck = duel.defense.undisclosed_decks().pop()
         else:
-            offense_deck, defense_deck = duel.offense.decide_decks_for_duel(duel.defense.decks)
+            offense_deck, defense_deck = duel.offense.decide_decks_for_duel(
+                duel.defense.decks)
         return DeckChoiceInput(offense_deck, defense_deck)
-
-    def cleanup_duel(self):
-        duel_state = self.duel_ongoing.state
-        # identify why the duel ended
-        if duel_state in [constants.DuelState.DRAWN, constants.DuelState.FINISHED]:
-            for player in self.players():
-                if player.num_victory == constants.REQUIRED_WIN:
-                    self.end(constants.GameResult.FINISHED, winner=player)
-                    print("{0} wins! The game has ended as {0} first scored {1} points.".format(player.name,
-                                                                                                constants.REQUIRED_WIN))
-                    break
-        elif duel_state == constants.DuelState.ABORTED_BY_CORRECT_DONE:
-            self.end(constants.GameResult.DONE, winner=self.duel_ongoing.player_shouted)
-            print("{0} wins! The game has ended as {0} first shouted done correctly.".format(self.winner.name))
-        elif duel_state == constants.DuelState.ABORTED_BY_WRONG_DONE:
-            self.end(constants.GameResult.FORFEITED_BY_WRONG_DONE, loser=self.duel_ongoing.player_shouted)
-            print("{} wins! The game has ended as {} shouted done wrong.".format(self.winner.name, self.loser.name))
-        elif duel_state == constants.DuelState.ABORTED_BY_WRONG_DRAW:
-            self.end(constants.GameResult.FORFEITED_BY_WRONG_DRAW, loser=self.duel_ongoing.player_shouted)
-            print("{} wins! The game has ended as {} shouted draw wrong.".format(self.winner.name, self.loser.name))
-
-        # cleanup
-        time.sleep(constants.DELAY_AFTER_DUEL_ENDS)
 
     def end(self, result, winner=None, loser=None):
         self.over = True
@@ -723,34 +756,29 @@ class Game(object):
         self.time_ended = time.time()
         self.winner = winner
         self.loser = loser
-        if winner is None and loser is None:
-            raise ValueError('At least one of winner or loser must be supplied.')
-        elif winner is None:
-            self.winner = self.player_red if loser == self.player_black else self.player_black
-        elif loser is None:
-            self.loser = self.player_red if winner == self.player_black else self.player_black
+        if self.winner is None and self.loser is None:
+            raise ValueError('Either winner or loser must be supplied.')
+        elif self.winner is None:
+            if self.loser == self.player_black:
+                self.winner = self.player_red
+            else:
+                self.winner = self.player_black
+        elif self.loser is None:
+            if self.loser == self.player_black:
+                self.winner = self.player_red
+            else:
+                self.winner = self.player_black
 
     def to_json(self):
         return jsonpickle.encode(self)
 
 
-class RoundInput(Input):
-    def __init__(self, round_):
-        self.round_ = round_
-
-    def is_valid(self, *args, **kwargs):
-        return self.round_ in 1, 2, 3
-
-    @abc.abstractmethod
-    def pop(self):
-        pass
-
-
 class DeckRandomizer(object):
-    def __init__(self, pile, joker_value_strategy=Thirteen, joker_location_strategy=JokerLast):
+    def __init__(self, pile, joker_value_strategy=Thirteen,
+                 joker_position_strategy=JokerLast):
         self.pile = pile
         self.joker_value_strategy = joker_value_strategy
-        self.joker_location_strategy = joker_location_strategy
+        self.joker_position_strategy = joker_position_strategy
 
     def pop(self):
         random.shuffle(self.pile)
@@ -758,9 +786,10 @@ class DeckRandomizer(object):
         for j in range(constants.DECK_PER_PILE):
             cards = []
             for k in range(constants.CARD_PER_DECK):
-                cards.append(self.pile.pop())
+                new_card = self.pile.pop()
+                cards.append(new_card)
             self.joker_value_strategy.apply(cards)
-            self.joker_location_strategy.apply(cards)
+            self.joker_position_strategy.apply(cards)
             new_deck = Deck(cards)
             new_deck.delegate().open_up()
             decks.append(new_deck)
@@ -771,8 +800,10 @@ class DeckRandomizer(object):
 
 
 class Player(object):
-    def __init__(self, name='', deck_in_duel_index=None, num_victory=0, num_shout_die=0, num_shout_done=0,
-                 num_shout_draw=0, decks=None, pile=None, key_settings=None, alias=None, recent_action=None):
+    def __init__(self, name='', deck_in_duel_index=None, num_victory=0,
+                 num_shout_die=0, num_shout_done=0, num_shout_draw=0,
+                 decks=None, pile=None, key_settings=None,
+                 alias=None, recent_action=None):
         self.name = name
         self.deck_in_duel_index = deck_in_duel_index
         self.deck_in_duel = None
@@ -782,9 +813,35 @@ class Player(object):
         self.num_shout_draw = num_shout_draw
         self.decks = decks
         self.pile = pile
-        self.key_settings = key_settings or {action: '' for action in constants.Action}
+        if key_settings is None:
+            self.key_settings = {action: '' for action in constants.Action}
+        else:
+            self.key_settings = key_settings
         self.alias = alias
         self.recent_action = recent_action
+
+    def valid_actions(self, round_):
+        actions = [None]
+        if round_ == 1:
+            actions.append(constants.Action.DARE)
+            if self.num_shout_die < constants.MAX_DIE:
+                actions.append(constants.Action.DIE)
+            if self.num_shout_done < constants.MAX_DONE:
+                actions.append(constants.Action.DONE)
+        elif round_ == 2:
+            actions.append(constants.Action.DARE)
+            if self.num_shout_die < constants.MAX_DIE:
+                actions.append(constants.Action.DIE)
+            if self.num_shout_done < constants.MAX_DONE:
+                actions.append(constants.Action.DONE)
+        elif round_ == 3:
+            if self.num_shout_done < constants.MAX_DONE:
+                actions.append(constants.Action.DONE)
+            if self.num_shout_draw < constants.MAX_DRAW:
+                actions.append(constants.Action.DRAW)
+        else:
+            raise ValueError('Invalid round.')
+        return actions
 
     def undisclosed_decks(self):
         return list([deck for deck in self.decks if deck.is_undisclosed()])
@@ -795,7 +852,8 @@ class Player(object):
         for j in range(constants.DECK_PER_PILE):
             cards = []
             for k in range(constants.CARD_PER_DECK):
-                cards.append(self.pile.pop())
+                new_card = self.pile.pop()
+                cards.append(new_card)
             joker_value_strategy.apply(cards)
             delegate_strategy.apply(cards)
             new_deck = Deck(cards)
@@ -820,21 +878,22 @@ class Player(object):
 
     def open_next_card(self):
         deck = self.decks[self.deck_in_duel_index]
+        if deck.card_to_open_index is None:
+            deck.card_to_open_index = 1
         card_to_open = deck.cards[deck.card_to_open_index]
         card_to_open.open_up()
-        if deck.card_to_open_index == 1:
-            deck.card_to_open_index += 1
-        elif deck.card_to_open_index == 2:
+        deck.card_to_open_index += 1
+        if deck.card_to_open_index == 3:
             deck.card_to_open_index = None
 
     def is_done(self):
-        values = {}
+        values = set()
         for deck in self.decks:
             if deck.state != constants.DeckState.UNDISCLOSED:
                 for card in deck.cards:
                     if card.is_open():
                         values.add(card.value)
-        return len(values) == constants.NUM_CARD
+        return len(values) == len(constants.Rank)
 
     def to_array(self):
         decks = [deck.to_array() for deck in self.decks]
@@ -849,11 +908,14 @@ class Player(object):
     def from_array(cls, array):
         decks_array = numpy.array(array[0:9 * 19])
         decks_reshaped = decks_array.reshape(9, -1)
-        decks = list(Deck.from_array(deck_array) for deck_array in decks_reshaped)
+        decks = list(
+            [Deck.from_array(deck_array) for deck_array in decks_reshaped])
         num_victory = None if array[9 * 19] == -1 else array[9 * 19]
         num_shout_die = None if array[9 * 19 + 1] == -1 else array[9 * 19 + 1]
-        deck_in_duel_index = None if array[9 * 19 + 2] == -1 else array[9 * 19 + 2]
-        return cls(decks=decks, num_victory=num_victory, num_shout_die=num_shout_die,
+        deck_in_duel_index = None if array[9 * 19 + 2] == -1 else array[
+            9 * 19 + 2]
+        return cls(decks=decks, num_victory=num_victory,
+                   num_shout_die=num_shout_die,
                    deck_in_duel_index=deck_in_duel_index)
 
 
@@ -863,18 +925,30 @@ class HumanPlayer(Player):
         self.name = NameTextInput.from_human(prompt, forbidden_name).pop()
 
     def set_keys(self, blacklist=None):
-        blacklist = blacklist or []
+        if blacklist is None:
+            blacklist = []
         print('\n{}, decide the set of keys you will use.'.format(self.name))
         for action in self.key_settings:
-            key = input('{}, which key will you use to indicate {}? '.format(self.name, action.name))
-            is_valid_key = len(key) == 1 and key.islower() and key not in blacklist
+            prompt = '{}, which key will you use to indicate {}? '.format(
+                self.name, action.name)
+            key = input(prompt)
+            is_single = len(key) == 1
+            is_lower = key.islower()
+            is_not_duplicate = key not in blacklist
+            is_valid_key = is_single and is_lower and is_not_duplicate
             while not is_valid_key:
                 if key in blacklist:
-                    print("You can't use the following key(s): {}".format(', '.join(blacklist)))
+                    print("You can't use the following key(s): {}".format(
+                        ', '.join(blacklist)))
                 else:
                     print('Use a single lowercase alphabet.')
-                key = input('{}, which key will you use to indicate {}? '.format(self.name, action.name))
-                is_valid_key = len(key) == 1 and key.islower() and key not in blacklist
+                prompt = '{}, which key will you use to indicate {}? '.format(
+                    self.name, action.name)
+                key = input(prompt)
+                is_single = len(key) == 1
+                is_lower = key.islower()
+                is_not_duplicate = key not in blacklist
+                is_valid_key = is_single and is_lower and is_not_duplicate
             self.key_settings[action] = key
             blacklist.append(key)
 
@@ -889,7 +963,8 @@ class HumanPlayer(Player):
                 break
         if joker_found:
             joker = cards[joker_index]
-            cards_without_joker = list([card for card in cards if card != joker])
+            cards_without_joker = list(
+                [card for card in cards if card != joker])
             biggest = max(cards_without_joker, key=lambda x: x.value)
             smallest = min(cards_without_joker, key=lambda x: x.value)
             joker.value = biggest.value
@@ -897,30 +972,50 @@ class HumanPlayer(Player):
         else:
             biggest = max(cards, key=lambda x: x.value)
             smallest = min(cards, key=lambda x: x.value)
-            middle = [card for card in cards if card != biggest and card != smallest].pop()
+            middle = [card for card in cards if
+                      card != biggest and card != smallest].pop()
             not_biggest = [middle, smallest]
             random.shuffle(not_biggest)
             return tuple([biggest] + not_biggest)
 
     def decide_decks_for_duel(self, opponent_decks):
         # Choose offense deck
-        my_undisclosed_decks = self.undisclosed_decks()
-        offense_deck = DeckTextInput.from_human(self.name, False, my_undisclosed_decks).pop()
+        undisclosed_decks_me = self.undisclosed_decks()
+        offense_deck = DeckTextInput.from_human(self.name, False,
+                                                undisclosed_decks_me).pop()
 
         # Display chance of winning
         # print('The chance of winning/tying/losing/unknown for each deck is:')
         # for opponent_deck in opponent_decks:
         #     if opponent_deck.is_undisclosed():
-        #         my_delegate = offense_deck.delegate()
+        #         delegate_me = offense_deck.delegate()
         #         opponent_delegate = opponent_deck.delegate()
         #         print('Deck #{}: {} - {}'.format(opponent_deck.index + 1, opponent_deck.delegate(),
-        #                                          ComputerPlayer.get_chances(self.decks, my_delegate, opponent_decks,
+        #                                          ComputerPlayer.get_chances(self.decks, delegate_me, opponent_decks,
         #                                                                     opponent_delegate, 2)))
 
         # Choose defense deck
-        opponent_undisclosed_decks = [deck for deck in opponent_decks if deck.is_undisclosed()]
-        defense_deck = DeckTextInput.from_human(self.name, True, opponent_undisclosed_decks).pop()
+        opponent_undisclosed_decks = [deck for deck in opponent_decks if
+                                      deck.is_undisclosed()]
+        defense_deck = DeckTextInput.from_human(self.name, True,
+                                                opponent_undisclosed_decks).pop()
         return offense_deck, defense_deck
+
+    def shout(self, round_):
+        allowed_actions = self.valid_actions(round_)
+        keys_settings_in_list = list(
+            ['{}: \'{}\''.format(action.name, key) for action, key in
+             self.key_settings.items() if action in allowed_actions])
+        do_nothing = 'Pass: \'Enter\''
+        keys_settings_in_list.append(do_nothing)
+        keys_settings_in_str = ', '.join(keys_settings_in_list)
+        prompt = '{}, what will you do? ({})'.format(self.name,
+                                                     keys_settings_in_str)
+        shout_input = input(prompt)
+        key_to_action = dict(
+            {key: action for action, key in self.key_settings.items()})
+        action = key_to_action.get(shout_input)
+        return Shout(self, action)
 
 
 class ComputerPlayer(Player):
@@ -930,11 +1025,15 @@ class ComputerPlayer(Player):
 
     def set_keys(self, blacklist=None):
         if self.alias == constants.PLAYER_RED:
-            self.key_settings = {constants.Action.DARE: 'z', constants.Action.DIE: 'x',
-                                 constants.Action.DONE: 'c', constants.Action.DRAW: 'v'}
+            self.key_settings = {constants.Action.DARE: 'z',
+                                 constants.Action.DIE: 'x',
+                                 constants.Action.DONE: 'c',
+                                 constants.Action.DRAW: 'v'}
         else:
-            self.key_settings = {constants.Action.DARE: 'u', constants.Action.DIE: 'i',
-                                 constants.Action.DONE: 'o', constants.Action.DRAW: 'p'}
+            self.key_settings = {constants.Action.DARE: 'u',
+                                 constants.Action.DIE: 'i',
+                                 constants.Action.DONE: 'o',
+                                 constants.Action.DRAW: 'p'}
 
     @abc.abstractmethod
     def decide_delegate(self, cards):
@@ -945,40 +1044,47 @@ class ComputerPlayer(Player):
         pass
 
     @staticmethod
-    def get_chances(my_decks, my_delegate, opponent_decks, opponent_delegate, num_open):
+    def get_chances(decks_me, delegate_me, decks_opponent, delegate_opponent,
+                    num_open):
         """get chances of winning, tying, losing, and unknown.
         :return: a 4-tuple containing the chances of winning, tying, losing, and unknown
         """
         # get the value of my delegate and the opponent's
-        my_hidden_cards = []
-        for deck in my_decks:
+        hidden_cards_me = []
+        for deck in decks_me:
             for card in deck.cards:
-                if not card.is_open() and card.value <= my_delegate.value:
-                    my_hidden_cards.append(card)
+                if not card.is_open() and card.value <= delegate_me.value:
+                    hidden_cards_me.append(card)
         opponent_hidden_cards = []
-        for deck in opponent_decks:
+        for deck in decks_opponent:
             for card in deck.cards:
-                if not card.is_open() and card.value <= opponent_delegate.value:
+                if not card.is_open() and card.value <= delegate_opponent.value:
                     opponent_hidden_cards.append(card)
 
         # calculate the odds that you will lose the duel
         win, lose, draw, unknown = 0, 0, 0, 0
-        my_candidates = list(itertools.combinations(my_hidden_cards, num_open))
-        opponent_candidates = list(itertools.combinations(opponent_hidden_cards, num_open))
-        for my_cards in my_candidates:
+        candidates_me = itertools.combinations(hidden_cards_me, num_open)
+        opponent_candidates = itertools.combinations(opponent_hidden_cards,
+                                                     num_open)
+        for cards_me in candidates_me:
             for opponent_cards in opponent_candidates:
+                sum_me = sum([card.value for card in cards_me])
+                opponent_sum = sum([card.value for card in opponent_cards])
                 # joker may still be hidden
-                if any([card.suit is None for card in my_cards]) or any([card.suit is None for card in opponent_cards]):
+                if any([card.suit is None for card in cards_me]) or any(
+                        [card.suit is None for card in opponent_cards]):
                     unknown += 1
-                elif sum([card.value for card in my_cards]) > sum([card.value for card in opponent_cards]):
+                elif sum_me > opponent_sum:
                     win += 1
-                elif sum([card.value for card in my_cards]) == sum([card.value for card in opponent_cards]):
+                elif sum_me == opponent_sum:
                     draw += 1
-                elif sum([card.value for card in my_cards]) < sum([card.value for card in opponent_cards]):
+                elif sum_me < opponent_sum:
                     lose += 1
                 else:
                     raise Exception('Something is wrong.')
-        total = len(my_candidates) * len(opponent_candidates)
+        num_candidates_me = sum(1 for candidate in candidates_me)
+        num_candidates_opponent = sum(1 for candidate in opponent_candidates)
+        total = num_candidates_me * num_candidates_opponent
         odds_win = round(win / total, 3)
         odds_draw = round(draw / total, 3)
         odds_lose = round(lose / total, 3)
@@ -987,7 +1093,8 @@ class ComputerPlayer(Player):
 
     @staticmethod
     def get_smallest_undisclosed_deck(decks):
-        return min([deck for deck in decks if deck.is_undisclosed()], key=lambda x: x.index)
+        return min([deck for deck in decks if deck.is_undisclosed()],
+                   key=lambda x: x.index)
 
     @staticmethod
     def undisclosed_values(decks):
@@ -1007,6 +1114,10 @@ class ComputerPlayer(Player):
                     values.append(card.value)
         return tuple(set(values))
 
+    @abc.abstractmethod
+    def shout(self, round_):
+        pass
+
 
 class DumbComputerPlayer(ComputerPlayer):
     def decide_delegate(self, cards):
@@ -1024,9 +1135,14 @@ class DumbComputerPlayer(ComputerPlayer):
         return cards
 
     def decide_decks_for_duel(self, opponent_decks):
-        my_min_deck = self.get_smallest_undisclosed_deck(self.decks)
-        opponent_min_deck = self.get_smallest_undisclosed_deck(opponent_decks)
-        return my_min_deck, opponent_min_deck
+        min_deck_me = self.get_smallest_undisclosed_deck(self.decks)
+        min_deck_opponent = self.get_smallest_undisclosed_deck(opponent_decks)
+        return min_deck_me, min_deck_opponent
+
+    def shout(self, round_):
+        allowed_actions = self.valid_actions(round_)
+        random_action = random.choice(allowed_actions)
+        return Shout(self, random_action)
 
 
 class Card(object):
@@ -1038,7 +1154,10 @@ class Card(object):
         self.open_ = open_
 
     def __eq__(self, other):
-        return self.suit == other.suit and self.colored == other.colored and self.value == other.value
+        same_suit = self.suit == other.suit
+        same_color = self.colored == other.colored
+        same_value = self.value == other.value
+        return same_suit and same_color and same_value
 
     def __repr__(self):
         if self.is_open():
@@ -1079,8 +1198,8 @@ class Card(object):
 
 
 class Deck(object):
-    def __init__(self, cards, state=constants.DeckState.UNDISCLOSED, index=None, opponent_deck_index=None,
-                 card_to_open_index=1):
+    def __init__(self, cards, state=constants.DeckState.UNDISCLOSED, index=None,
+                 opponent_deck_index=None, card_to_open_index=None):
         self.state = state
         self.cards = cards
         self.index = index  # zero based
@@ -1100,12 +1219,24 @@ class Deck(object):
         return self.state == constants.DeckState.IN_DUEL
 
     def to_array(self):
-        cards = [] if self.cards is None else numpy.array([card.to_array() for card in self.cards]).flatten()
+        if self.cards is None:
+            cards_flattened = []
+        else:
+            cards_generator = [card.to_array() for card in self.cards]
+            cards = numpy.array(cards_generator)
+            cards_flattened = cards.flatten()
         state = -1 if self.state is None else self.state.value
         index = -1 if self.index is None else self.index
-        opponent_deck_index = -1 if self.opponent_deck_index is None else self.opponent_deck_index
-        card_to_open_index = -1 if self.card_to_open_index is None else self.card_to_open_index
-        list_ = [*cards, state, index, opponent_deck_index, card_to_open_index]
+        if self.opponent_deck_index is None:
+            opponent_deck_index = -1
+        else:
+            opponent_deck_index = self.opponent_deck_index
+        if self.card_to_open_index is None:
+            card_to_open_index = -1
+        else:
+            card_to_open_index = self.card_to_open_index
+        list_ = [*cards_flattened, state, index, opponent_deck_index,
+                 card_to_open_index]
         return numpy.array(list_)
 
     @classmethod
@@ -1116,38 +1247,51 @@ class Deck(object):
         opponent_deck_index = array[17]
         card_to_open_index = array[18]
         cards_flattened = numpy.array(cards).flatten()
-        if cards_flattened == []:
-            cards = None
-        else:
+        if cards_flattened:
             cards = list([Card.from_array(card_array) for card_array in cards])
+        else:
+            cards = None
         state = None if state == -1 else constants.DeckState(state)
         index = None if index == -1 else index
-        opponent_deck_index = None if opponent_deck_index == -1 else opponent_deck_index
-        card_to_open_index = None if card_to_open_index == -1 else card_to_open_index
+        if opponent_deck_index == -1:
+            opponent_deck_index = None
+        if card_to_open_index == -1:
+            card_to_open_index = None
         return cls(cards, state, index, opponent_deck_index, card_to_open_index)
 
 
 class Duel(object):
-    def __init__(self, player_red, player_black, index, time_started=None, round_=-1, over=False, time_ended=None,
-                 player_shouted=None, winner=None, loser=None, state=constants.DuelState.UNSTARTED, offense=None,
+    def __init__(self, player_red, player_black, index, time_started=None,
+                 round_=-1, over=False, time_ended=None, winner=None,
+                 loser=None, state=constants.DuelState.UNSTARTED, offense=None,
                  defense=None):
         self.player_red = player_red
         self.player_black = player_black
         self.index = index
-        self.time_started = time_started or time.time()
+        if time_started is None:
+            self.time_started = time.time()
+        else:
+            self.time_started = time_started
         self.round_ = round_
         self.over = over
         self.time_ended = time_ended
-        self.player_shouted = player_shouted
         self.winner = winner
         self.loser = loser
         self.state = state
-        if self.index % 2 == 0:
-            self.offense = offense or self.player_red
-            self.defense = defense or self.player_black
+        if offense is None:
+            if self.index % 2 == 0:
+                self.offense = self.player_red
+            else:
+                self.offense = self.player_black
         else:
-            self.offense = offense or self.player_black
-            self.defense = defense or self.player_red
+            self.offense = offense
+        if defense is None:
+            if self.index % 2 == 0:
+                self.defense = self.player_black
+            else:
+                self.defense = self.player_red
+        else:
+            self.defense = defense
 
     def start(self):
         self.state = constants.DuelState.ONGOING
@@ -1156,8 +1300,10 @@ class Duel(object):
         return self.offense, self.defense
 
     def is_drawn(self):
-        sum_offense = sum([card.value for card in self.offense.deck_in_duel.cards])
-        sum_defense = sum([card.value for card in self.defense.deck_in_duel.cards])
+        sum_offense = sum(
+            card.value for card in self.offense.deck_in_duel.cards)
+        sum_defense = sum(
+            card.value for card in self.defense.deck_in_duel.cards)
         return sum_offense == sum_defense
 
     def is_over(self):
@@ -1172,300 +1318,30 @@ class Duel(object):
         return self.state == constants.DuelState.ONGOING
 
     def is_finished(self):
-        return self.state not in [constants.DuelState.UNSTARTED, constants.DuelState.ONGOING]
+        return self.state not in [constants.DuelState.UNSTARTED,
+                                  constants.DuelState.ONGOING]
 
-    def display_decks(self):
-        row_format = '{:^15}' * constants.DECK_PER_PILE
-        red_first_line = '{:^105}{:^30}'.format('{} ({})'.format(self.player_red.name, self.player_red.alias),
-                                                'Score {} / Die {}'.format(self.player_red.num_victory,
-                                                                           self.player_red.num_shout_die))
-        print(red_first_line)
-        red_numbers = [
-            '< #{} >'.format(deck.index + 1) if deck.is_in_duel() else '#{}'.format(deck.index + 1)
-            for deck in self.player_red.decks]
-        red_number_line = row_format.format(*red_numbers)
-        print(red_number_line)
-        red_undisclosed_delegates = [repr(deck.cards[0]) if deck.is_undisclosed() else '' for deck in
-                                     self.player_red.decks]
-        print(row_format.format(*red_undisclosed_delegates))
-        red_opened_delegates = ['' if deck.is_undisclosed() else repr(deck.cards[0]) for deck in
-                                self.player_red.decks]
-        print(row_format.format(*red_opened_delegates))
-        red_seconds = ['' if deck.is_undisclosed() else repr(deck.cards[1]) for deck in
-                       self.player_red.decks]
-        print(row_format.format(*red_seconds))
-        red_lasts = ['' if deck.is_undisclosed() else repr(deck.cards[2]) for deck in
-                     self.player_red.decks]
-        print(row_format.format(*red_lasts))
-        print()
-        black_lasts = ['' if deck.is_undisclosed() else repr(deck.cards[2]) for deck in
-                       self.player_black.decks]
-        print(row_format.format(*black_lasts))
-        black_seconds = ['' if deck.is_undisclosed() else repr(deck.cards[1]) for deck in
-                         self.player_black.decks]
-        print(row_format.format(*black_seconds))
-        black_opened_delegates = ['' if deck.is_undisclosed() else repr(deck.cards[0]) for deck in
-                                  self.player_black.decks]
-        print(row_format.format(*black_opened_delegates))
-        black_undisclosed_delegate = [repr(deck.cards[0]) if deck.is_undisclosed() else '' for deck in
-                                      self.player_black.decks]
-        print(row_format.format(*black_undisclosed_delegate))
-        black_numbers = [
-            ('< #{} >' if deck.is_in_duel() else '#{}').format(deck.index + 1) for deck in self.player_black.decks]
-        black_number_line = row_format.format(*black_numbers)
-        print(black_number_line)
-        black_first_line = '{:^105}{:^30}'.format('{} (Player Black)'.format(self.player_black.name),
-                                                  'Score {} / Die {}'.format(self.player_black.num_victory,
-                                                                             self.player_black.num_shout_die))
-        print(black_first_line)
-        if not self.is_over():
-            for player in self.players():
-                undisclosed_values = ComputerPlayer.undisclosed_values(player.decks)
-                if not undisclosed_values:
-                    print("{}'s all values open! Shout done!".format(player.name))
-                elif len(undisclosed_values) <= 3:
-                    print("{}'s undisclosed values: {}".format(player.name, undisclosed_values))
-
-    def process_action(self, player_shouted, action):
-        if action is None:
-            self.process_no_shouts()
-        elif action == constants.Action.DARE:
-            self.process_double_dare()
-        elif action == constants.Action.DIE:
-            self.process_shout_die(player_shouted)
-        elif action == constants.Action.DONE:
-            self.process_shout_done(player_shouted)
-        elif action == constants.Action.DRAW:
-            self.process_shout_draw(player_shouted)
-        else:
-            raise ValueError('Invalid action.')
-
-    def process_no_shouts(self):
-        """compare the sums and decides the winner"""
-        print('All right. No actions.')
-        sum_red = sum([card.value for card in self.player_red.deck_in_duel.cards])
-        sum_black = sum([card.value for card in self.player_black.deck_in_duel.cards])
-        if sum_red > sum_black:
-            self.end(constants.DuelState.FINISHED, winner=self.player_red)
-        elif sum_red < sum_black:
-            self.end(constants.DuelState.FINISHED, winner=self.player_black)
-        else:
-            self.end(constants.DuelState.DRAWN, winner=self.defense)
-
-    def process_double_dare(self):
-        """do nothing if both users have dared after the second cards are open"""
-        print('Ooh, double dare!')
-        pass
-
-    def process_shout_die(self, player_shouted):
-        player_shouted.num_shout_die += 1
-        self.end(constants.DuelState.DIED, player_shouted)
-
-    def process_shout_done(self, player_shouted):
-        player_shouted.num_shout_done += 1
-        values = set(
-            [card.value for deck in player_shouted.decks if deck.state != constants.DeckState.UNDISCLOSED for card in
-             deck.cards if card.is_open()])
-        if len(values) == len(constants.Rank):
-            self.end(constants.DuelState.ABORTED_BY_CORRECT_DONE, player_shouted)
-        else:
-            if player_shouted.num_shout_done > constants.MAX_DONE:
-                self.end(constants.DuelState.ABORTED_BY_WRONG_DONE, player_shouted)
-            else:
-                print("That was a wrong done, but you'll have one more chance.")
-
-    def process_shout_draw(self, player_shouted):
-        player_shouted.num_shout_draw += 1
-        player_red_deck_sum = sum([card.value for card in self.player_red.deck_in_duel.cards])
-        player_black_deck_sum = sum([card.value for card in self.player_black.deck_in_duel.cards])
-        if player_red_deck_sum == player_black_deck_sum:
-            self.end(constants.DuelState.DRAWN, winner=player_shouted)
-        else:
-            if player_shouted.num_shout_draw > constants.MAX_DRAW:
-                self.end(constants.DuelState.ABORTED_BY_WRONG_DRAW, player_shouted)
-            else:
-                print("That was a wrong draw, but you'll have one more chance.")
-
-    def get_and_process_input(self):
-        def red_shout_dare(key):
-            keyboard.unhook_key(key.name)
-            print('Player Red shouted Dare!')
-            player_has_shouted_dare[constants.PLAYER_RED] = True
-
-        def red_shout_die(key):
-            keyboard.unhook_key(key.name)
-            print('Player Red shouted Die!')
-            has_red_shouted_other[constants.Action.DIE] = True
-
-        def red_shout_done(key):
-            keyboard.unhook_key(key.name)
-            print('Player Red shouted Done!')
-            has_red_shouted_other[constants.Action.DONE] = True
-
-        def black_shout_dare(key):
-            keyboard.unhook_key(key.name)
-            print('Player Black shouted Dare!')
-            player_has_shouted_dare[constants.PLAYER_BLACK] = True
-
-        def black_shout_die(key):
-            keyboard.unhook_key(key.name)
-            print('Player black shouted Die!')
-            has_black_shouted_other[constants.Action.DIE] = True
-
-        def black_shout_done(key):
-            keyboard.unhook_key(key.name)
-            print('Player black shouted Done!')
-            has_black_shouted_other[constants.Action.DONE] = True
-
-        # Prevent double done
-        red_opened_values = ComputerPlayer.opened_values(self.player_red.decks)
-        red_undisclosed_values = ComputerPlayer.undisclosed_values(self.player_red.decks)
-        red_right_before_done = len(red_opened_values) == constants.NUM_CARD - 1 and len(red_undisclosed_values) == 1
-        black_opened_values = ComputerPlayer.opened_values(self.player_black.decks)
-        black_undisclosed_values = ComputerPlayer.undisclosed_values(self.player_black.decks)
-        black_right_before_done = len(black_opened_values) == constants.NUM_CARD - 1 and len(
-            black_undisclosed_values) == 1
-        if red_right_before_done and black_right_before_done:
-            self.end(constants.DuelState.ABORTED_BEFORE_DOUBLE_DONE, winner=self.player_black)
-
-        # reset the players' actions before getting input
-        player_has_shouted_dare = {constants.PLAYER_RED: False, constants.PLAYER_BLACK: False}
-        has_red_shouted_other = {constants.Action.DIE: False, constants.Action.DONE: False,
-                                 constants.Action.DRAW: False, }
-        has_black_shouted_other = {constants.Action.DIE: False, constants.Action.DONE: False,
-                                   constants.Action.DRAW: False, }
-
-        # hook keys
-        keyboard.on_press_key(self.player_red.key_settings[constants.Action.DARE], red_shout_dare)
-        if self.player_red.num_shout_die < constants.MAX_DIE:
-            keyboard.on_press_key(self.player_red.key_settings[constants.Action.DIE], red_shout_die)
-        keyboard.on_press_key(self.player_red.key_settings[constants.Action.DONE], red_shout_done)
-        keyboard.on_press_key(self.player_black.key_settings[constants.Action.DARE], black_shout_dare)
-        if self.player_black.num_shout_die < constants.MAX_DIE:
-            keyboard.on_press_key(self.player_black.key_settings[constants.Action.DIE], black_shout_die)
-        keyboard.on_press_key(self.player_black.key_settings[constants.Action.DONE], black_shout_done)
-
-        # start timing and wait for key press
-        print('\nWhat will you two do?')
-        # num_open = len([card for card in self.offense.deck_in_duel.cards if card.is_open()])
-        # offense_delegate = self.offense.deck_in_duel.delegate()
-        # defense_delegate = self.defense.deck_in_duel.delegate()
-        # print(self.offense.name,
-        #       ComputerPlayer.get_chances(self.offense.decks, offense_delegate, self.defense.decks, defense_delegate,
-        #                                  num_open))
-        start = time.time()
-        while not (all([player_has_shouted_dare[player.alias] for player in self.players()])
-                   or any(has_red_shouted_other.values()) or any(
-                    has_black_shouted_other.values()) or time.time() - start > constants.TIME_LIMIT_FOR_ACTION):
-            pass
-        keyboard.unhook_all()
-
-        # identify and process the action
-        has_found_action = False
-        if all([player_has_shouted_dare[player.alias] for player in self.players()]):
-            self.process_action(None, constants.Action.DARE)
-            has_found_action = True
-        for action, has_happened in has_red_shouted_other.items():
-            if not has_found_action and has_happened:
-                self.process_action(self.player_red, action)
-                has_found_action = True
-        for action, has_happened in has_black_shouted_other.items():
-            if not has_found_action and has_happened:
-                self.process_action(self.player_black, action)
-                has_found_action = True
-        if not has_found_action:  # consider no input as dare
-            print('All right. No actions. That counts as a double dare.')
-            self.process_action(None, constants.Action.DARE)
-
-    def get_and_process_final_input(self):
-        def red_shout_done(key):
-            keyboard.unhook_key(key.name)
-            print('Player Red shouted Done!')
-            has_red_shouted_other[constants.Action.DONE] = True
-
-        def red_shout_draw(key):
-            keyboard.unhook_key(key.name)
-            print('Player Red shouted Draw!')
-            has_red_shouted_other[constants.Action.DRAW] = True
-
-        def black_shout_done(key):
-            keyboard.unhook_key(key.name)
-            print('Player black shouted Done!')
-            has_black_shouted_other[constants.Action.DONE] = True
-
-        def black_shout_draw(key):
-            keyboard.unhook_key(key.name)
-            print('Player black shouted Draw!')
-            has_black_shouted_other[constants.Action.DRAW] = True
-
-        # reset the players' actions before getting input
-        has_red_shouted_other = {constants.Action.DIE: False, constants.Action.DONE: False,
-                                 constants.Action.DRAW: False}
-        has_black_shouted_other = {constants.Action.DIE: False, constants.Action.DONE: False,
-                                   constants.Action.DRAW: False}
-
-        # hook keys
-        keyboard.on_press_key(self.player_red.key_settings[constants.Action.DONE], red_shout_done)
-        keyboard.on_press_key(self.player_red.key_settings[constants.Action.DRAW], red_shout_draw)
-        keyboard.on_press_key(self.player_black.key_settings[constants.Action.DONE], black_shout_done)
-        keyboard.on_press_key(self.player_black.key_settings[constants.Action.DRAW], black_shout_draw)
-
-        # start timing and wait for key press
-        print("\nShout done or draw, if that's the case.")
-        start = time.time()
-        while not (any(has_red_shouted_other.values()) or any(has_black_shouted_other.values())
-                   or time.time() - start > constants.TIME_LIMIT_FOR_FINAL_ACTION):
-            pass
-        keyboard.unhook_all()
-
-        # identify and process the action
-        has_found_action = False
-        for action, has_happened in has_red_shouted_other.items():
-            if not has_found_action and has_happened:
-                self.process_action(self.player_red, action)
-                has_found_action = True
-        for action, has_happened in has_black_shouted_other.items():
-            if not has_found_action and has_happened:
-                self.process_action(self.player_black, action)
-                has_found_action = True
-        if not has_found_action:
-            self.process_action(None, None)
-
-    def end(self, state, player_shouted=None, winner=None, loser=None):
+    def end(self, state, winner=None, loser=None):
         self.over = True
         self.time_ended = time.time()
         self.state = state
-        self.player_shouted = player_shouted
+        if state.value not in range(3, 10):
+            raise ValueError('Invalid DeckState.')
         self.winner = winner
         self.loser = loser
-        if winner is None and loser is None:
-            if state == constants.DuelState.DIED:
-                print("Duel #{}: {} died, so no one gets a point.".format(self.index + 1, self.player_shouted.name))
-            elif state == constants.DuelState.DRAWN:
-                self.winner = self.defense
-                self.loser = self.offense
-                self.winner.num_victory += 1
-                print("Duel #{}: The sums are equal, but no one shouted draw, so the defense ({}) gets a point.".format(
-                    self.index + 1, self.winner.name))
-            elif state == constants.DuelState.ABORTED_BY_CORRECT_DONE:
-                print("Duel #{}: {} is done, so this duel is aborted.".format(self.index + 1, self.player_shouted.name))
-            elif state == constants.DuelState.ABORTED_BY_WRONG_DONE:
-                print(
-                    "Duel #{}: {} shouted done wrong, so this duel is aborted.".format(self.index + 1,
-                                                                                       self.player_shouted.name))
-            elif state == constants.DuelState.ABORTED_BY_WRONG_DRAW:
-                print(
-                    "Duel #{}: {} shouted draw wrong, so this duel is aborted.".format(self.index + 1,
-                                                                                       self.player_shouted.name))
-            else:
-                raise ValueError('At least one of winner or loser must be supplied.')
+        if self.winner is None and self.loser is None:
+            if state != constants.DuelState.DIED:
+                raise ValueError('Either winner or loser must be supplied.')
         else:
             if winner is None:
                 self.winner = self.defense if loser == self.offense else self.offense
-            if loser is None:
+            elif loser is None:
                 self.loser = self.offense if winner == self.offense else self.defense
             self.winner.num_victory += 1
-            print("Duel #{}: {} wins and gets a point.".format(self.index + 1, self.winner.name))
+        for player in self.players():
+            player.deck_in_duel.state = constants.DeckState.FINISHED
+            for card in player.deck_in_duel.cards:
+                card.open_up()
 
 
 class PlayersSetup(object):
@@ -1476,21 +1352,23 @@ class PlayersSetup(object):
         if self.num_human_players == 0:
             class1_name = sys.argv[1]
             class1 = globals().get(class1_name)
-            if type(class1) in ['NoneType', 'ComputerPlayer'] or not issubclass(class1, ComputerPlayer):
-                raise ValueError('Invalid class name for computer player')
+            is_subclass = issubclass(class1, ComputerPlayer)
+            if not is_subclass or class1 == ComputerPlayer:
+                raise ValueError('Invalid class name for computer player.')
             player1 = class1()
             class2_name = sys.argv[2]
             class2 = globals().get(class2_name)
-            if type(class2) in ['NoneType', 'ComputerPlayer'] or not issubclass(class2, ComputerPlayer):
-                raise ValueError('Invalid class name for computer player')
+            is_subclass = issubclass(class2, ComputerPlayer)
+            if not is_subclass or class2 == ComputerPlayer:
+                raise ValueError('Invalid class name for computer player.')
             forbidden_name = player1.name
             player2 = class2(forbidden_name)
         elif self.num_human_players == 1:
             class1_name = sys.argv[1]
             class1 = globals().get(class1_name)
-            print(globals())
-            if type(class1) in ['NoneType', 'ComputerPlayer'] or not issubclass(class1, ComputerPlayer):
-                raise ValueError('Invalid class name for computer player')
+            is_subclass = issubclass(class1, ComputerPlayer)
+            if not is_subclass or class1 == ComputerPlayer:
+                raise ValueError('Invalid class name for computer player.')
             player1 = class1()
             human_player1_prompt = 'Player 1, enter your name: '
             forbidden_name = player1.name
@@ -1512,73 +1390,86 @@ class OutputHandler(object):
         self.messages = []
 
     def display(self, game_state_in_json=None, message='', duration=0):
+        print('{:-^135}'.format(str()))
+        self.states.append(game_state_in_json)
+        self.messages.append(message)
         if game_state_in_json is None:
             if message:
                 message_delimited = message.split('\n')
                 print('Message:  {}'.format(message_delimited[0]))
                 for line in message_delimited[1:]:
-                    print('{:10}{}'.format('', line))
+                    print('{}{}'.format(constants.INDENT, line))
             time.sleep(duration)
-        self.states.append(game_state_in_json)
-        self.messages.append(message)
+            return
         game = jsonpickle.decode(game_state_in_json)
         duel = game.duel_ongoing
         row_format = '{:^15}' * constants.DECK_PER_PILE
-        red_fense = '' if duel is None else ('Offense' if game.player_red == duel.offense else 'Defense')
-        red_first_line = '{:^30}{:^75}{:^30}'.format(red_fense,
-                                                     '{} ({})'.format(game.player_red.name, game.player_red.alias),
-                                                     'Score {} / Die {}'.format(game.player_red.num_victory,
-                                                                                game.player_red.num_shout_die))
+        red_fense = '' if duel is None else (
+            'Offense' if game.player_red == duel.offense else 'Defense')
+
+        red_name = '{} ({})'.format(game.player_red.name, game.player_red.alias)
+        red_stats = 'Score {} / Die {}'.format(game.player_red.num_victory,
+                                               game.player_red.num_shout_die)
+        red_first_line = '{:^30}{:^75}{:^30}'.format(red_fense, red_name,
+                                                     red_stats)
         print(red_first_line)
         red_decks = game.player_red.decks
         red_numbers = [('< #{} >' if deck.is_in_duel() else '#{}').format(
             deck.index + 1) for deck in red_decks]
         red_number_line = row_format.format(*red_numbers)
         print(red_number_line)
-        red_undisclosed_delegates = [repr(deck.cards[0]) if deck.is_undisclosed() else '' for deck in
-                                     red_decks]
+        red_undisclosed_delegates = [
+            repr(deck.cards[0]) if deck.is_undisclosed() else '' for deck in
+            red_decks]
         print(row_format.format(*red_undisclosed_delegates))
-        red_opened_delegates = ['' if deck.is_undisclosed() else repr(deck.cards[0]) for deck in
-                                red_decks]
+        red_opened_delegates = [
+            '' if deck.is_undisclosed() else repr(deck.cards[0]) for deck in
+            red_decks]
         print(row_format.format(*red_opened_delegates))
-        red_seconds = ['' if deck.is_undisclosed() else repr(deck.cards[1]) for deck in
-                       red_decks]
+        red_seconds = ['' if deck.is_undisclosed() else repr(deck.cards[1]) for
+                       deck in red_decks]
         print(row_format.format(*red_seconds))
-        red_lasts = ['' if deck.is_undisclosed() else repr(deck.cards[2]) for deck in
-                     red_decks]
+        red_lasts = ['' if deck.is_undisclosed() else repr(deck.cards[2]) for
+                     deck in red_decks]
         print(row_format.format(*red_lasts))
         print()
-        print('{:^135}'.format('' if duel is None else '[Duel #{}]'.format(duel.index + 1)))
+        print('{:^135}'.format(
+            '' if duel is None else '[Duel #{}]'.format(duel.index + 1)))
         print()
         black_decks = game.player_black.decks
-        black_lasts = ['' if deck.is_undisclosed() else repr(deck.cards[2]) for deck in
-                       black_decks]
+        black_lasts = ['' if deck.is_undisclosed() else repr(deck.cards[2]) for
+                       deck in black_decks]
         print(row_format.format(*black_lasts))
-        black_seconds = ['' if deck.is_undisclosed() else repr(deck.cards[1]) for deck in
-                         black_decks]
+        black_seconds = ['' if deck.is_undisclosed() else repr(deck.cards[1])
+                         for deck in black_decks]
         print(row_format.format(*black_seconds))
-        black_opened_delegates = ['' if deck.is_undisclosed() else repr(deck.cards[0]) for
-                                  deck in black_decks]
+        black_opened_delegates = [
+            '' if deck.is_undisclosed() else repr(deck.cards[0]) for
+            deck in black_decks]
         print(row_format.format(*black_opened_delegates))
-        black_undisclosed_delegate = [repr(deck.cards[0]) if deck.is_undisclosed() else '' for
-                                      deck in black_decks]
+        black_undisclosed_delegate = [
+            repr(deck.cards[0]) if deck.is_undisclosed() else '' for
+            deck in black_decks]
         print(row_format.format(*black_undisclosed_delegate))
         black_numbers = [
-            '< #{} >'.format(deck.index + 1) if deck.is_in_duel() else '#{}'.format(
+            '< #{} >'.format(
+                deck.index + 1) if deck.is_in_duel() else '#{}'.format(
                 deck.index + 1) for deck in black_decks]
         black_number_line = row_format.format(*black_numbers)
         print(black_number_line)
         black_fense = '' if duel is None else (
             'Offense' if game.player_black == duel.offense else 'Defense')
-        black_first_line = '{:^30}{:^75}{:^30}'.format(black_fense, '{} (Player Black)'.format(game.player_black.name),
-                                                       'Score {} / Die {}'.format(game.player_black.num_victory,
-                                                                                  game.player_black.num_shout_die))
+        black_name = '{} (Player Black)'.format(game.player_black.name)
+        black_stats = 'Score {} / Die {}'.format(game.player_black.num_victory,
+                                                 game.player_black.num_shout_die)
+        black_first_line = '{:^30}{:^75}{:^30}'.format(black_fense, black_name,
+                                                       black_stats)
         print(black_first_line)
         if message:
             message_delimited = message.split('\n')
             print('Message:  {}'.format(message_delimited[0]))
             for line in message_delimited[1:]:
-                print('{:10}{}'.format('', line))
+                print('{}{}'.format(constants.INDENT, line))
         time.sleep(duration)
 
     def export_to_json(self, last_game_state_in_json=None):
@@ -1592,8 +1483,11 @@ class OutputHandler(object):
         time_started_str = last_game.time_started
         time_started_float = float(time_started_str)
         datetime_started = datetime.datetime.fromtimestamp(time_started_float)
-        datetime_str = datetime.datetime.strftime(datetime_started, '%Y%m%d%H%M%S')
-        file_name = '{}({}){}({}){}.json'.format(red_class, red_name, black_class, black_name, datetime_str)
+        datetime_str = datetime.datetime.strftime(datetime_started,
+                                                  '%Y%m%d%H%M%S')
+        file_name = '{}({}){}({}){}.json'.format(red_class, red_name,
+                                                 black_class, black_name,
+                                                 datetime_str)
         content = jsonpickle.encode(self.states)
         with open(file_name, 'w') as file:
             file.write(content)
@@ -1605,32 +1499,4 @@ class OutputHandler(object):
 
 
 if __name__ == '__main__':
-    game = Game(*sys.argv[1:])
-    game.initialize_players()
-    game.set_keys()
-    game.initialize_decks()
-    output_handler = OutputHandler()
-    while not game.is_over():
-        duel = game.to_next_duel()
-        while not duel.is_over():
-            duel.to_next_round()
-            message, duration = game.prepare()
-            output_handler.display(game.to_json(), message, duration)
-            user_input = game.accept()
-            message, duration = game.process(user_input)
-            output_handler.display(game.to_json(), message, duration)
-            # game.decide_decks_for_duel()
-            # duel.display_decks()
-            # duel.open_next_cards()
-            # duel.display_decks()
-            # duel.get_and_process_input()
-            # duel.display_decks()
-            # duel.open_next_cards()
-            # duel.display_decks()
-            # if not duel.over:
-            #     duel.get_and_process_final_input()
-        game.cleanup_duel()
-    game.display_result()
-
-# TODO pile 어떻게? player, game, constants
-# TODO flag 도입해야 모든 시점을 표현할 수 있을 듯?
+    pass
