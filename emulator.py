@@ -71,10 +71,10 @@ def main():
         duel = game.to_next_duel()
         while not duel.is_over():
             message, duration = game.prepare()
-            output_handler.display(game.to_json(), message, duration)
+            output_handler.save_and_display(game.to_json(), message, duration)
             user_input = game.accept()
             message, duration = game.process(user_input)
-            output_handler.display(game.to_json(), message, duration)
+            output_handler.save_and_display(game.to_json(), message, duration)
 
     # output_handler.export_to_json()
     # for player in game.players():

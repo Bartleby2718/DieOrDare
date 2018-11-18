@@ -1391,16 +1391,22 @@ class OutputHandler(object):
         self.states = []
         self.messages = []
 
-    def display(self, game_state_in_json=None, message='', duration=0):
-        print('{:-^135}'.format(str()))
+    def save_and_display(self, game_state_in_json, message, duration):
+        self.save(game_state_in_json, message)
+        self.display(game_state_in_json, message, duration)
+
+    def save(self, game_state_in_json, message):
         self.states.append(game_state_in_json)
         self.messages.append(message)
-        if game_state_in_json is None:
-            if message:
-                message_delimited = message.split('\n')
-                print('Message:  {}'.format(message_delimited[0]))
-                for line in message_delimited[1:]:
-                    print('{}{}'.format(constants.INDENT, line))
+
+    @staticmethod
+    def display(game_state_in_json=None, message='', duration=0):
+        print('{:-^135}'.format(str()))
+        if game_state_in_json is None and message:
+            message_delimited = message.split('\n')
+            print('Message:  {}'.format(message_delimited[0]))
+            for line in message_delimited[1:]:
+                print('{}{}'.format(constants.INDENT, line))
             time.sleep(duration)
             return
         game = jsonpickle.decode(game_state_in_json)
