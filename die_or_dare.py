@@ -859,6 +859,16 @@ class Player(object):
     def undisclosed_decks(self):
         return list([deck for deck in self.decks if deck.is_undisclosed()])
 
+    def take_pile(self, pile):
+        if isinstance(pile, RedPile):
+            self.pile = pile.cards
+            self.alias = constants.PLAYER_RED
+        elif isinstance(pile, BlackPile):
+            self.pile = pile.cards
+            self.alias = constants.PLAYER_BLACK
+        else:
+            raise ValueError('This is not a pile.')
+
     def initialize_decks(self, joker_value_strategy, delegate_strategy):
         random.shuffle(self.pile)
         decks = []
@@ -1344,6 +1354,38 @@ class PlayersSetup(object):
         else:
             raise ValueError('Invalid number of human players.')
         return player1, player2
+
+
+class Pile(object):
+    def __init__(self):
+        self.cards = None
+
+    def pop(self):
+        return self.cards
+
+
+class RedPile(Pile):
+    def __init__(self):
+        super().__init__()
+        red_joker = Card(None, True, constants.JOKER, None, False)
+        cards = [red_joker]
+        for suit in constants.RED_SUITS:
+            for rank in constants.Rank:
+                card = Card(suit, True, rank.name, rank.value, False)
+                cards.append(card)
+        self.cards = cards
+
+
+class BlackPile(Pile):
+    def __init__(self):
+        super().__init__()
+        black_joker = Card(None, False, constants.JOKER, None, False)
+        cards = [black_joker]
+        for suit in constants.BLACK_SUITS:
+            for rank in constants.Rank:
+                card = Card(suit, False, rank.name, rank.value, False)
+                cards.append(card)
+        self.cards = cards
 
 
 class OutputHandler(object):

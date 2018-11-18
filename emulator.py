@@ -23,20 +23,11 @@ def main():
     # player_red, player_black = RandomPlayerOrder(player1, player2).pop()
     player_red, player_black = player1, player2
 
-    ranks = constants.Rank
-    red_joker = Card(None, True, constants.JOKER, None, False)
-    red_suits = constants.RED_SUITS
-    player_red.pile = [red_joker] + [
-        Card(suit, True, rank.name, rank.value, False) for suit in red_suits for
-        rank in ranks]
-    player_red.alias = constants.PLAYER_RED
+    red_pile = RedPile()
+    player_red.take_pile(red_pile)
+    black_pile = BlackPile()
+    player_black.take_pile(black_pile)
 
-    black_joker = Card(None, False, constants.JOKER, None, False)
-    black_suits = constants.BLACK_SUITS
-    player_black.pile = [black_joker] + [
-        Card(suit, False, rank.name, rank.value, False) for suit in black_suits
-        for rank in ranks]
-    player_black.alias = constants.PLAYER_BLACK
     message = '{}, you are the Player Red, so you will go first.'.format(
         player_red.name)
     message += '\n{}, you are the Player Black.'.format(player_black.name)
