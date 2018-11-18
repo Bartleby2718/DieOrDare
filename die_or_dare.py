@@ -781,10 +781,10 @@ class Game(object):
             else:
                 self.winner = self.player_black
         elif self.loser is None:
-            if self.loser == self.player_black:
-                self.winner = self.player_red
+            if self.winner == self.player_black:
+                self.loser = self.player_red
             else:
-                self.winner = self.player_black
+                self.loser = self.player_black
 
     def to_json(self):
         return jsonpickle.encode(self)
