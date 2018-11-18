@@ -838,9 +838,7 @@ class Player(object):
         self.recent_action = recent_action
 
     def valid_actions(self, round_):
-        actions = [None]
-        if self.num_shout_done < constants.MAX_DONE:
-            actions.append(constants.Action.DONE)
+        actions = [None, constants.Action.DONE]
         if round_ == 1:
             actions.append(constants.Action.DARE)
             if self.num_shout_die < constants.MAX_DIE:  # TODO: too early?
