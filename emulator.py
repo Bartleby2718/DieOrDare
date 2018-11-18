@@ -75,14 +75,7 @@ def main():
             user_input = game.accept()
             message, duration = game.process(user_input)
             output_handler.save_and_display(game.to_json(), message, duration)
-
-    # output_handler.export_to_json()
-    # for player in game.players():
-    #     for deck in player.decks:
-    #         deck.state = constants.DeckState.FINISHED
-    #         for card in deck.cards:
-    #             card.open_up()
-    # output_handler.display(jsonpickle.encode(game))
+    output_handler.export_game_states(final_state_only=True)
 
 
 if __name__ == '__main__':

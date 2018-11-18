@@ -3,9 +3,11 @@ import constants
 import datetime
 import functools
 import itertools
+import json
 import jsonpickle
 import keyboard
 import numpy
+import os
 import random
 import sys
 import time
@@ -1480,15 +1482,14 @@ class OutputHandler(object):
                 print('{}{}'.format(constants.INDENT, line))
         time.sleep(duration)
 
-    def export_to_json(self, last_game_state_in_json=None):
-        if last_game_state_in_json is None:
-            last_game_state_in_json = self.states[-1]
-        last_game = jsonpickle.decode(last_game_state_in_json)
-        red_class = last_game.player_red.__class__.__name__
-        red_name = last_game.player_red.name
-        black_class = last_game.player_black.__class__.__name__
-        black_name = last_game.player_black.name
-        time_started_str = last_game.time_started
+    @staticmethod
+    def extract_file_name(game_state_in_json):
+        game = jsonpickle.decode(game_state_in_json)
+        red_class = game.player_red.__class__.__name__
+        red_name = game.player_red.name
+        black_class = game.player_black.__class__.__name__
+        black_name = game.player_black.name
+        time_started_str = game.time_started
         time_started_float = float(time_started_str)
         datetime_started = datetime.datetime.fromtimestamp(time_started_float)
         datetime_str = datetime.datetime.strftime(datetime_started,
@@ -1496,12 +1497,36 @@ class OutputHandler(object):
         file_name = '{}({}){}({}){}.json'.format(red_class, red_name,
                                                  black_class, black_name,
                                                  datetime_str)
-        content = jsonpickle.encode(self.states)
-        with open(file_name, 'w') as file:
-            file.write(content)
+        return file_name
 
-    def import_from_json(self, file_name):
-        with open(file_name) as file:
+    @staticmethod
+    def export_json_to_file(game_state_json, file_path, final_state_only=False):
+        with open(file_path, 'w') as file:
+            if final_state_only:
+                final_state = game_state_json[-1:]
+                json.dump(final_state, file)
+            else:
+                json.dump(game_state_json, file)
+
+    def export_game_states(self, file_location=None, file_name=None,
+                           final_state_only=False):
+        if not self.states:
+            raise Exception('No game states found in this OutputHandler.')
+        if file_location is None:
+            current_file_path = os.path.abspath(__file__)
+            current_directory_path = os.path.dirname(current_file_path)
+            directory_name = 'json'
+            file_location = os.path.join(current_directory_path, directory_name)
+            if not os.path.exists(file_location):
+                os.makedirs(file_location)
+        if file_name is None:
+            last_game_state = self.states[-1]
+            file_name = self.extract_file_name(last_game_state)
+        file_path = os.path.join(file_location, file_name)
+        self.export_json_to_file(self.states, file_path, final_state_only)
+
+    def import_from_json(self, file_path):
+        with open(file_path) as file:
             content = file.read()
             self.states = jsonpickle.decode(content)
 
