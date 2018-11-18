@@ -174,6 +174,25 @@ class RandomNumber(JokerValueStrategy):
                 break
 
 
+class NextBiggest(JokerValueStrategy):
+    @staticmethod
+    def apply(cards):
+        if any([card.is_joker() for card in cards]):
+            joker = [card for card in cards if card.is_joker()].pop()
+            cards_without_joker = [card for card in cards if card != joker]
+            biggest = max(cards_without_joker, key=lambda x: x.value)
+            smallest = min(cards_without_joker, key=lambda x: x.value)
+            if biggest.value == 1:
+                joker.value = 1
+            elif biggest.value == 2:
+                joker.value = 3 - smallest.value
+            else:
+                if smallest.value == biggest.value - 1:
+                    joker.value = biggest.value - 2
+                else:
+                    joker.value = biggest.value - 1
+
+
 class JokerPositionStrategy(abc.ABC):
     @staticmethod
     @abc.abstractmethod
@@ -253,7 +272,8 @@ class JokerValueStrategyInput(Input):
 class JokerValueStrategyTextInput(JokerValueStrategyInput):
     @classmethod
     def from_human(cls, player_name):
-        number_to_strategy = {1: Thirteen, 2: SameAsMax, 3: RandomNumber}
+        number_to_strategy = {1: Thirteen, 2: SameAsMax, 3: RandomNumber,
+                              4: NextBiggest}
         valid_input = False
         input_value = None
         while not valid_input:
@@ -264,6 +284,8 @@ class JokerValueStrategyTextInput(JokerValueStrategyInput):
             print(
                 'Press 2 to set the value of Joker to be equal to the biggest value in the deck.')
             print('Press 3 to set the value of Joker to be a random number.')
+            print(
+                'Press 4 to set the value of Joker to be the biggest value that is not in the deck.')
             prompt = 'What is your choice? '
             input_value = input(prompt)
             try:
