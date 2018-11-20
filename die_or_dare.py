@@ -1103,23 +1103,21 @@ class ComputerPlayer(Player):
         return min([deck for deck in decks if deck.is_undisclosed()],
                    key=lambda x: x.index)
 
-    @staticmethod
-    def undisclosed_values(decks):
-        values = []
-        for deck in decks:
-            for card in deck.cards:
-                if deck.is_undisclosed() or not card.is_open():
-                    values.append(card.value)
-        return tuple(set(values))
+    @classmethod
+    def undisclosed_values(cls, decks):
+        values = set(rank.value for rank in constants.Rank)
+        opened_values = cls.opened_values(decks)
+        undisclosed_values = values.difference(opened_values)
+        return tuple(undisclosed_values)
 
     @staticmethod
     def opened_values(decks):
-        values = []
+        values = set()
         for deck in decks:
             for card in deck.cards:
                 if not deck.is_undisclosed() and card.is_open():
-                    values.append(card.value)
-        return tuple(set(values))
+                    values.add(card.value)
+        return tuple(values)
 
     @abc.abstractmethod
     def shout(self, round_):
