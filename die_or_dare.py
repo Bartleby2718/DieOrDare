@@ -689,7 +689,7 @@ class Game(object):
                 if player.recent_action == constants.Action.DIE:
                     player.num_shout_die += 1
                     duel.end(constants.DuelState.DIED)
-                    message = "{} died, so no one gets a point.\nDuel #{} ended.".format(
+                    message = "{} died, so no one gets a point. Duel #{} ended.".format(
                         player.name, duel.index + 1)
                     duration = constants.DELAY_AFTER_DUEL_ENDS
                     return message, duration
@@ -700,13 +700,13 @@ class Game(object):
                     player.num_shout_draw += 1
                     if duel.is_drawn():  # correct draw
                         duel.end(constants.DuelState.DRAWN, player)
-                        message = "The sums are equal, but no one shouted draw, so the defense ({}) gets a point.\nDuel #{}:ended.".format(
-                            duel.winner.name, duel.index + 1)
+                        message = '{} shouted draw correctly and gets a point. Duel #{} ended.'.format(
+                            player.name, duel.index + 1)
                         duration = constants.DELAY_AFTER_DUEL_ENDS
                         if duel.winner.num_victory == constants.REQUIRED_WIN:
                             self.end(constants.GameResult.FINISHED,
                                      winner=duel.winner)
-                            message += "{0} wins!\nThe game has ended as {0} first scored {1} points.".format(
+                            message += "\n{0} wins! The game has ended as {0} first scored {1} points.".format(
                                 duel.winner.name, constants.REQUIRED_WIN)
                             duration = constants.DELAY_AFTER_GAME_ENDS
                         return message, duration
@@ -723,19 +723,23 @@ class Game(object):
                               duel.defense.deck_in_duel.cards)
             if sum_offense > sum_defense:
                 duel.end(constants.DuelState.FINISHED, winner=duel.offense)
+                message = '{0} has a greater sum, so {0} gets a point. Duel #{1} ended.'.format(
+                    duel.winner.name, duel.index + 1)
             elif sum_offense < sum_defense:
                 duel.end(constants.DuelState.FINISHED, winner=duel.defense)
+                message = '{0} has a greater sum, so {0} gets a point. Duel #{1} ended.'.format(
+                    duel.winner.name, duel.index + 1)
             else:
                 duel.end(constants.DuelState.DRAWN, winner=duel.defense)
+                message = "The sums are equal, but no one shouted draw, so the defense ({}) gets a point. Duel #{} ended.".format(
+                    duel.winner.name, duel.index + 1)
             if duel.winner.num_victory == constants.REQUIRED_WIN:
                 self.end(constants.GameResult.FINISHED, winner=duel.winner)
-                message = "{0} wins!\nThe game has ended as {0} first scored {1} points.".format(
+                message += "\n{0} wins! The game has ended as {0} first scored {1} points.".format(
                     duel.winner.name, constants.REQUIRED_WIN)
                 duration = constants.DELAY_AFTER_GAME_ENDS
                 return message, duration
             else:
-                message = "{} wins and gets a point.\nDuel #{} ended.".format(
-                    duel.winner.name, duel.index + 1)
                 duration = constants.DELAY_AFTER_DUEL_ENDS
                 return message, duration
         return ValueError('Invalid round.')
