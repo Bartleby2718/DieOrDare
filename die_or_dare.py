@@ -159,7 +159,7 @@ class SameAsMax(JokerValueStrategy):
     @staticmethod
     def apply(cards):
         if any(card.is_joker() for card in cards):
-            joker = [card for card in cards if card.is_joker()].pop()
+            joker = next(card for card in cards if card.is_joker())
             cards_without_joker = [card for card in cards if card != joker]
             biggest = max(cards_without_joker, key=lambda x: x.value)
             joker.value = biggest.value
@@ -178,7 +178,7 @@ class NextBiggest(JokerValueStrategy):
     @staticmethod
     def apply(cards):
         if any(card.is_joker() for card in cards):
-            joker = [card for card in cards if card.is_joker()].pop()
+            joker = next(card for card in cards if card.is_joker())
             cards_without_joker = [card for card in cards if card != joker]
             biggest = max(cards_without_joker, key=lambda x: x.value)
             smallest = min(cards_without_joker, key=lambda x: x.value)
