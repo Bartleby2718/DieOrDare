@@ -1,11 +1,14 @@
 from die_or_dare import *
 
+run_in_batch = False
+
 
 def main():
     output_handler = OutputHandler()
 
     ### player initialization
-    # print("I want to know your names first.")
+    if not run_in_batch:
+        print("I want to know your names first.")
     player1 = DumbComputerPlayer()
     # player1 = HumanPlayer('Player 1, enter your name: ')
     player2 = DumbComputerPlayer(player1.name)
@@ -18,7 +21,8 @@ def main():
                                                                 player2.name)
     message += '\nLet\'s flip a coin to decide who will be the Player Red!'
     duration = constants.DELAY_BEFORE_COIN_TOSS
-    output_handler.display(message=message, duration=duration)
+    if not run_in_batch:
+        output_handler.display(message=message, duration=duration)
 
     # player_red, player_black = RandomPlayerOrder(player1, player2).pop()
     player_red, player_black = player1, player2
@@ -32,7 +36,8 @@ def main():
         player_red.name)
     message += '\n{}, you are the Player Black.'.format(player_black.name)
     duration = constants.DELAY_AFTER_COIN_TOSS
-    output_handler.display(message=message, duration=duration)
+    if not run_in_batch:
+        output_handler.display(message=message, duration=duration)
 
     ### key settings
     player_red.key_settings = KeySettingsInput.bottom_left()
@@ -63,7 +68,8 @@ def main():
 
     message = "Let's start DieOrDare!\nHere we go!"
     duration = constants.DELAY_BEFORE_GAME_START
-    output_handler.display(message=message, duration=duration)
+    if not run_in_batch:
+        output_handler.display(message=message, duration=duration)
 
     game = Game(player_red, player_black)
 
@@ -71,12 +77,25 @@ def main():
         duel = game.to_next_duel()
         while not duel.is_over():
             message, duration = game.prepare()
-            output_handler.save_and_display(game.to_json(), message, duration)
+            if run_in_batch:
+                output_handler.save(game.to_json(), message)
+            else:
+                output_handler.save_and_display(game.to_json(), message,
+                                                duration)
             user_input = game.accept()
             message, duration = game.process(user_input)
-            output_handler.save_and_display(game.to_json(), message, duration)
+            if run_in_batch:
+                output_handler.save(game.to_json(), message)
+            else:
+                output_handler.save_and_display(game.to_json(), message,
+                                                duration)
     output_handler.export_game_states(final_state_only=True)
 
 
 if __name__ == '__main__':
-    main()
+    if run_in_batch:
+        for i in range(50):
+            print(i + 1)
+            main()
+    else:
+        main()
