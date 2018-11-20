@@ -158,7 +158,7 @@ class Thirteen(JokerValueStrategy):
 class SameAsMax(JokerValueStrategy):
     @staticmethod
     def apply(cards):
-        if any([card.is_joker() for card in cards]):
+        if any(card.is_joker() for card in cards):
             joker = [card for card in cards if card.is_joker()].pop()
             cards_without_joker = [card for card in cards if card != joker]
             biggest = max(cards_without_joker, key=lambda x: x.value)
@@ -177,7 +177,7 @@ class RandomNumber(JokerValueStrategy):
 class NextBiggest(JokerValueStrategy):
     @staticmethod
     def apply(cards):
-        if any([card.is_joker() for card in cards]):
+        if any(card.is_joker() for card in cards):
             joker = [card for card in cards if card.is_joker()].pop()
             cards_without_joker = [card for card in cards if card != joker]
             biggest = max(cards_without_joker, key=lambda x: x.value)
@@ -357,8 +357,7 @@ class DeckTextInput(DeckInput):
     @classmethod
     def from_human(cls, player_name=None, is_opponent=None,
                    undisclosed_decks=None):
-        user_input_to_deck = dict(
-            {deck.index: deck for deck in undisclosed_decks})
+        user_input_to_deck = {deck.index: deck for deck in undisclosed_decks}
         valid_input = False
         input_value = None
         possessive = "your opponent's" if is_opponent else 'your'
@@ -371,8 +370,8 @@ class DeckTextInput(DeckInput):
                 if input_value not in user_input_to_deck:
                     raise ValueError('Input not among choices.')
             except ValueError:
-                choices_generator = [str(deck.index + 1) for deck in
-                                     undisclosed_decks]
+                choices_generator = (str(deck.index + 1) for deck in
+                                     undisclosed_decks)
                 choices_str = ', '.join(choices_generator)
                 prompt = 'Invalid input. Enter a number among {}.'.format(
                     choices_str)
@@ -437,7 +436,7 @@ class ShoutKeypressInput(ShoutInput):
         if keys_to_hook is None:
             keys_to_hook = []
         else:
-            keys_to_hook = [key for key in keys_to_hook if key is not None]
+            keys_to_hook = (key for key in keys_to_hook if key is not None)
         for key in keys_to_hook:
             keyboard.on_press_key(key, when_key_pressed)
         over = False
@@ -445,7 +444,7 @@ class ShoutKeypressInput(ShoutInput):
         while not over:
             over = time.time() - start > timeout
         keyboard.unhook_all()
-        keys_str = ''.join([keyboard_event for keyboard_event in keys_pressed])
+        keys_str = ''.join(keys_pressed)
         return cls(keys_str)
 
     def pop(self):
@@ -602,7 +601,7 @@ class Game(object):
     def get_actions(self, timeout=0):
         duel = self.duel_ongoing
         round_ = duel.round_
-        if all([isinstance(player, HumanPlayer) for player in self.players()]):
+        if all(isinstance(player, HumanPlayer) for player in self.players()):
             keys = []
             for player in self.players():
                 valid_actions = player.valid_actions(round_)
@@ -646,9 +645,8 @@ class Game(object):
         for key_pressed in keys_pressed:
             for player in self.players():
                 valid_actions = player.valid_actions(round_)
-                key_to_action = dict(
-                    {key: action for action, key in
-                     player.key_settings.items()})
+                key_to_action = {key: action for action, key in
+                                 player.key_settings.items()}
                 action = key_to_action.get(key_pressed)
                 if action in valid_actions:
                     shout = Shout(player, action)
@@ -719,10 +717,10 @@ class Game(object):
             # do nothing and move on to next round to open next cards
             return message, duration
         elif round_ == 3:
-            sum_offense = sum([card.value for card in
-                               duel.offense.deck_in_duel.cards])
-            sum_defense = sum([card.value for card in
-                               duel.defense.deck_in_duel.cards])
+            sum_offense = sum(card.value for card in
+                              duel.offense.deck_in_duel.cards)
+            sum_defense = sum(card.value for card in
+                              duel.defense.deck_in_duel.cards)
             if sum_offense > sum_defense:
                 duel.end(constants.DuelState.FINISHED, winner=duel.offense)
             elif sum_offense < sum_defense:
@@ -879,7 +877,7 @@ class Player(object):
         return actions
 
     def undisclosed_decks(self):
-        return list([deck for deck in self.decks if deck.is_undisclosed()])
+        return [deck for deck in self.decks if deck.is_undisclosed()]
 
     def take_pile(self, pile):
         if isinstance(pile, RedPile):
@@ -953,8 +951,7 @@ class Player(object):
     def from_array(cls, array):
         decks_array = numpy.array(array[0:9 * 19])
         decks_reshaped = decks_array.reshape(9, -1)
-        decks = list(
-            [Deck.from_array(deck_array) for deck_array in decks_reshaped])
+        decks = [Deck.from_array(deck_array) for deck_array in decks_reshaped]
         num_victory = None if array[9 * 19] == -1 else array[9 * 19]
         num_shout_die = None if array[9 * 19 + 1] == -1 else array[9 * 19 + 1]
         deck_in_duel_index = None if array[9 * 19 + 2] == -1 else array[
@@ -1009,17 +1006,17 @@ class HumanPlayer(Player):
 
     def shout(self, round_):
         allowed_actions = self.valid_actions(round_)
-        keys_settings_in_list = list(
-            ['{}: \'{}\''.format(action.name, key) for action, key in
-             self.key_settings.items() if action in allowed_actions])
+        keys_settings_in_list = ['{}: \'{}\''.format(action.name, key) for
+                                 action, key in self.key_settings.items() if
+                                 action in allowed_actions]
         do_nothing = 'Pass: \'Enter\''
         keys_settings_in_list.append(do_nothing)
         keys_settings_in_str = ', '.join(keys_settings_in_list)
         prompt = '{}, what will you do? ({})'.format(self.name,
                                                      keys_settings_in_str)
         shout_input = input(prompt)
-        key_to_action = dict(
-            {key: action for action, key in self.key_settings.items()})
+        key_to_action = {key: action for action, key in
+                         self.key_settings.items()}
         action = key_to_action.get(shout_input)
         return Shout(self, action)
 
@@ -1208,7 +1205,7 @@ class Deck(object):
         self.card_to_open_index = card_to_open_index
 
     def __repr__(self):
-        return ' / '.join([repr(card) for card in self.cards])
+        return ' / '.join(repr(card) for card in self.cards)
 
     def delegate(self):
         return self.cards[0]
@@ -1223,7 +1220,7 @@ class Deck(object):
         if self.cards is None:
             cards_flattened = []
         else:
-            cards_generator = [card.to_array() for card in self.cards]
+            cards_generator = (card.to_array() for card in self.cards)
             cards = numpy.array(cards_generator)
             cards_flattened = cards.flatten()
         state = -1 if self.state is None else self.state.value
@@ -1249,7 +1246,7 @@ class Deck(object):
         card_to_open_index = array[18]
         cards_flattened = numpy.array(cards).flatten()
         if cards_flattened:
-            cards = list([Card.from_array(card_array) for card_array in cards])
+            cards = [Card.from_array(card_array) for card_array in cards]
         else:
             cards = None
         state = None if state == -1 else constants.DeckState(state)
@@ -1484,8 +1481,7 @@ class OutputHandler(object):
             deck in black_decks]
         print(row_format.format(*black_undisclosed_delegate))
         black_numbers = [
-            '< #{} >'.format(
-                deck.index + 1) if deck.is_in_duel() else '#{}'.format(
+            ('< #{} >' if deck.is_in_duel() else '#{}').format(
                 deck.index + 1) for deck in black_decks]
         black_number_line = row_format.format(*black_numbers)
         print(black_number_line)
