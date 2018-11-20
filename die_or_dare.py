@@ -151,7 +151,7 @@ class Thirteen(JokerValueStrategy):
     def apply(cards):
         for card in cards:
             if card.is_joker():
-                card.value = max(constants.Rank)
+                card.value = max(constants.Rank.value)
                 break
 
 
@@ -170,7 +170,8 @@ class RandomNumber(JokerValueStrategy):
     def apply(cards):
         for card in cards:
             if card.is_joker():
-                card.value = random.randint(1, max(constants.Rank))
+                values = [rank.value for rank in constants.Rank]
+                card.value = random.choice(values)
                 break
 
 
