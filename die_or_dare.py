@@ -1052,52 +1052,79 @@ class ComputerPlayer(Player):
         pass
 
     @staticmethod
-    def get_chances(decks_me, delegate_me, decks_opponent, delegate_opponent,
-                    num_open):
-        """get chances of winning, tying, losing, and unknown.
-        :return: a 4-tuple containing the chances of winning, tying, losing, and unknown
+    def get_chances(decks_me, decks_opponent,
+                    joker_value_strategy_me=SameAsMax):
+        """get chances of winning, tying, and losing
+        assuming both player use SameAsMax for joker value strategy
         """
-        # get the value of my delegate and the opponent's
+
+        def _guess_joker_value(delegate_value, joker_value_strategy=SameAsMax):
+            """give an educated guess about the value of joker
+            (There is no guarantee that the return value is correct.)
+            """
+            if joker_value_strategy == Thirteen:
+                return 13
+            elif joker_value_strategy == SameAsMax:
+                return delegate_value
+            elif joker_value_strategy == NextBiggest:
+                return delegate_value - 1
+            else:
+                return random.randint(1, delegate_value)
+
+        # get my hidden cards
+        deck_in_duel_me = next(deck for deck in decks_me if deck.is_in_duel())
+        num_opened = sum(1 for card in deck_in_duel_me.cards if card.is_open())
+        current_sum_me = sum(
+            card.value for card in deck_in_duel_me.cards if card.is_open())
+        num_to_open = 3 - num_opened
+        delegate_value_me = deck_in_duel_me.delegate().value
         hidden_cards_me = []
         for deck in decks_me:
             for card in deck.cards:
-                if not card.is_open() and card.value <= delegate_me.value:
-                    hidden_cards_me.append(card)
-        opponent_hidden_cards = []
+                if not card.is_open():
+                    if card.is_joker() or card.value <= delegate_value_me:
+                        hidden_cards_me.append(card)
+        # get the opponent's cards
+        deck_in_duel_opponent = next(
+            deck for deck in decks_opponent if deck.is_in_duel())
+        current_sum_opponent = sum(
+            card.value for card in deck_in_duel_opponent.cards if
+            card.is_open())
+        delegate_value_opponent = deck_in_duel_opponent.delegate().value
+        hidden_cards_opponent = []
         for deck in decks_opponent:
             for card in deck.cards:
-                if not card.is_open() and card.value <= delegate_opponent.value:
-                    opponent_hidden_cards.append(card)
-
-        # calculate the odds that you will lose the duel
-        win, lose, draw, unknown = 0, 0, 0, 0
-        candidates_me = itertools.combinations(hidden_cards_me, num_open)
-        opponent_candidates = itertools.combinations(opponent_hidden_cards,
-                                                     num_open)
+                if not card.is_open():
+                    if card.is_joker() or card.value <= delegate_value_opponent:
+                        hidden_cards_opponent.append(card)
+        # calculate the odds
+        num_win, num_lose, num_draw = 0, 0, 0
+        candidates_me = itertools.combinations(hidden_cards_me, num_to_open)
+        candidates_opponent = itertools.combinations(hidden_cards_opponent,
+                                                     num_to_open)
         for cards_me in candidates_me:
-            for opponent_cards in opponent_candidates:
-                sum_me = sum([card.value for card in cards_me])
-                opponent_sum = sum([card.value for card in opponent_cards])
-                # joker may still be hidden
-                if any([card.suit is None for card in cards_me]) or any(
-                        [card.suit is None for card in opponent_cards]):
-                    unknown += 1
-                elif sum_me > opponent_sum:
-                    win += 1
-                elif sum_me == opponent_sum:
-                    draw += 1
-                elif sum_me < opponent_sum:
-                    lose += 1
+            for cards_opponent in candidates_opponent:
+                unopened_sum_me = sum(
+                    (_guess_joker_value(delegate_value_me,
+                                       joker_value_strategy_me) if card.is_joker() else card.value)
+                    for card in cards_me)
+                sum_me = current_sum_me + unopened_sum_me
+                unopened_sum_opponent = sum(
+                    (_guess_joker_value(
+                        delegate_value_opponent) if card.is_joker() else card.value)
+                    for card in cards_opponent)
+                sum_opponent = current_sum_opponent + unopened_sum_opponent
+                if sum_me > sum_opponent:
+                    num_win += 1
+                elif sum_me == sum_opponent:
+                    num_draw += 1
                 else:
-                    raise Exception('Something is wrong.')
-        num_candidates_me = sum(1 for candidate in candidates_me)
-        num_candidates_opponent = sum(1 for candidate in opponent_candidates)
-        total = num_candidates_me * num_candidates_opponent
-        odds_win = round(win / total, 3)
-        odds_draw = round(draw / total, 3)
-        odds_lose = round(lose / total, 3)
-        odds_unknown = round(unknown / total, 3)
-        return odds_win, odds_draw, odds_lose, odds_unknown
+                    num_lose += 1
+        total = num_win + num_draw + num_lose
+        odds_win = round(num_win / total, 3)
+        odds_draw = round(num_draw / total, 3)
+        odds_lose = round(num_lose / total, 3)
+        return odds_win, odds_draw, odds_lose
 
     @staticmethod
     def get_smallest_undisclosed_deck(decks):
