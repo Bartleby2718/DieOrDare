@@ -342,6 +342,63 @@ class JokerPositionStrategyTextInput(JokerPositionStrategyInput):
         return cls(number_to_strategy.get(input_value))
 
 
+class ActionChoiceStrategy(abc.ABC):
+    @staticmethod
+    @abc.abstractmethod
+    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
+              num_victory_opponent, num_shout_die_opponent, round_, in_turn):
+        pass
+
+
+class SimpleActionChoiceStrategy(ActionChoiceStrategy):
+    @staticmethod
+    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
+              num_victory_opponent, num_shout_die_opponent, round_, in_turn):
+        if not ComputerPlayer.undisclosed_values(decks_me):
+            return constants.Action.DONE
+        elif round_ == 1:
+            odds_win, odds_draw, odds_lose = ComputerPlayer.get_chances(
+                decks_me, decks_opponent)
+            if in_turn:
+                odds_lose += odds_draw
+            else:
+                odds_win += odds_draw
+            if odds_lose > odds_win + .1:
+                if random.random() < .7:
+                    return constants.Action.DIE
+                else:
+                    return constants.Action.DARE
+        elif round_ == 2:
+            odds_win, odds_draw, odds_lose = ComputerPlayer.get_chances(
+                decks_me, decks_opponent)
+            if in_turn:
+                odds_lose += odds_draw
+            else:
+                odds_win += odds_draw
+            if num_shout_die_me < constants.MAX_DIE:
+                if odds_lose > odds_win + .1:
+                    if random.random() < .7:
+                        return constants.Action.DIE
+                    else:
+                        return constants.Action.DARE
+            return constants.Action.DARE
+        elif round_ == 3:
+            deck_in_duel_me = next(
+                (deck for deck in decks_me if deck.is_in_duel()))
+            deck_in_duel_opponent = next(
+                (deck for deck in decks_opponent if
+                 deck.is_in_duel()))
+            sum_me = sum(card.value for card in deck_in_duel_me.cards)
+            sum_opponent = sum(
+                card.value for card in deck_in_duel_opponent.cards)
+            if sum_me == sum_opponent:
+                return constants.Action.DRAW
+            else:
+                return None
+        else:
+            raise Exception('Something went wrong.')
+
+
 class DeckInput(Input):
     def __init__(self, deck=None):
         self.deck = deck
@@ -617,8 +674,15 @@ class Game(object):
                 valid_actions = player.valid_actions(round_)
                 is_shout_valid = False
                 shout = None
+                in_turn = player == duel.offense
+                opponent = duel.defense if in_turn else duel.offense
+                decks_opponent = opponent.decks
+                num_victory_opponent = opponent.num_victory
+                num_shout_die_opponent = opponent.num_shout_die
                 while not is_shout_valid:
-                    shout = player.shout(round_)
+                    shout = player.shout(decks_opponent, num_victory_opponent,
+                                         num_shout_die_opponent, round_,
+                                         in_turn)
                     action = shout.action
                     is_shout_valid = action in valid_actions
                 shouts.append(shout)
@@ -1009,7 +1073,8 @@ class HumanPlayer(Player):
         return DeckTextInput.from_human(self.name, is_opponent,
                                         undisclosed_decks).pop()
 
-    def shout(self, round_):
+    def shout(self, decks_opponent, num_victory_opponent,
+              num_shout_die_opponent, round_, in_turn):
         allowed_actions = self.valid_actions(round_)
         keys_settings_in_list = ['{}: \'{}\''.format(action.name, key) for
                                  action, key in self.key_settings.items() if
@@ -1027,9 +1092,11 @@ class HumanPlayer(Player):
 
 
 class ComputerPlayer(Player):
-    def __init__(self, forbidden_name=''):
+    def __init__(self, forbidden_name='',
+                 action_choice_strategy=SimpleActionChoiceStrategy):
         super().__init__()
         self.name = NameTextInput.auto_generate(forbidden_name).pop()
+        self.action_choice_strategy = action_choice_strategy
 
     def set_keys(self, blacklist=None):
         if self.alias == constants.PLAYER_RED:
@@ -1106,7 +1173,7 @@ class ComputerPlayer(Player):
             for cards_opponent in candidates_opponent:
                 unopened_sum_me = sum(
                     (_guess_joker_value(delegate_value_me,
-                                       joker_value_strategy_me) if card.is_joker() else card.value)
+                                        joker_value_strategy_me) if card.is_joker() else card.value)
                     for card in cards_me)
                 sum_me = current_sum_me + unopened_sum_me
                 unopened_sum_opponent = sum(
@@ -1147,9 +1214,13 @@ class ComputerPlayer(Player):
                     values.add(card.value)
         return tuple(values)
 
-    @abc.abstractmethod
-    def shout(self, round_):
-        pass
+    def shout(self, decks_opponent, num_victory_opponent,
+              num_shout_die_opponent, round_, in_turn):
+        strategy = self.action_choice_strategy
+        action = strategy.apply(self.decks, decks_opponent, self.num_victory,
+                                self.num_shout_die, num_victory_opponent,
+                                num_shout_die_opponent, round_, in_turn)
+        return Shout(self, action)
 
 
 class DumbComputerPlayer(ComputerPlayer):
@@ -1166,11 +1237,6 @@ class DumbComputerPlayer(ComputerPlayer):
             undisclosed_decks = [deck for deck in self.decks if
                                  deck.is_undisclosed()]
             return max(undisclosed_decks, key=lambda x: x.index)
-
-    def shout(self, round_):
-        allowed_actions = self.valid_actions(round_)
-        random_action = random.choice(allowed_actions)
-        return Shout(self, random_action)
 
 
 class Card(object):
