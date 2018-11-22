@@ -1,52 +1,84 @@
 import enum
 
-DECK_PER_PILE = 9
-CARD_PER_DECK = 3
-RANKS = ('Ace', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King')
-HIGHEST_VALUE = NUM_CARD = len(RANKS)
-RED_SUITS = ('Hearts', 'Diamonds')
-BLACK_SUITS = ('Spades', 'Clubs')
-JOKER = 'Joker'
-PLAYER_RED = 'Player Red'
-PLAYER_BLACK = 'Player Black'
-REQUIRED_WIN = 3
-TIME_LIMIT_FOR_ACTION = 7
-TIME_LIMIT_FOR_FINAL_ACTION = 5
-DELAY_AFTER_TURN_NOTICE = 1
-DELAY_BEFORE_CARD_OPEN = 5
-DELAY_AFTER_DUEL_ENDS = 5
 
-MAX_DIE = 2
-MAX_DONE = 1
-MAX_DRAW = 1
+class Rank(enum.Enum):
+    ACE = 1
+    TWO = 2
+    THREE = 3
+    FOUR = 4
+    FIVE = 5
+    SIX = 6
+    SEVEN = 7
+    EIGHT = 8
+    NINE = 9
+    TEN = 10
+    JACK = 11
+    QUEEN = 12
+    KING = 13
+
+    
+class Suit(enum.Enum):
+    SPADES = 1
+    HEARTS = 2
+    CLUBS = 3
+    DIAMONDS = 4
 
 
 class Action(enum.Enum):
-    DARE = 'Dare'
-    DIE = 'Die'
-    DONE = 'Done'
-    DRAW = 'Draw'
+    DARE = 1
+    DIE = 2
+    DONE = 3
+    DRAW = 4
 
 
 class DeckState(enum.Enum):
-    UNOPENED = 'Unopened'
-    IN_DUEL = 'In Duel'
-    FINISHED = 'Finished'
+    UNDISCLOSED = 1
+    IN_DUEL = 2
+    FINISHED = 3
 
 
-class DuelResult(enum.Enum):
-    DRAWN = 'Drawn'
-    FINISHED = 'Finished'
-    DIED = 'Died'
-    ABORTED_BY_CORRECT_DONE = 'Aborted by correct done'
-    ABORTED_BY_WRONG_DONE = 'Aborted by wrong done'
-    ABORTED_BY_WRONG_DRAW = 'Aborted by wrong draw'
-    ABORTED_BEFORE_DOUBLE_DONE = 'Aborted before double done'
+class DuelState(enum.Enum):
+    UNSTARTED = 1
+    ONGOING = 2
+    DRAWN = 3
+    FINISHED = 4
+    DIED = 5
+    ABORTED_BY_CORRECT_DONE = 6
+    ABORTED_BY_WRONG_DONE = 7
+    ABORTED_BY_WRONG_DRAW = 8
+    ABORTED_BEFORE_DOUBLE_DONE = 9
+
+
+class Duration(object):
+    BEFORE_ACTION = 0
+    BEFORE_CARD_OPEN = 5
+    BEFORE_COIN_TOSS = 3
+    BEFORE_DECK_CHOICE = 1
+    BEFORE_GAME_START = 3
+    ACTION = 7
+    FINAL_ACTION = 5
+    AFTER_COIN_TOSS = 3
+    AFTER_DECK_CHOICE = 3
+    AFTER_DUEL_ENDS = 5
+    AFTER_GAME_ENDS = 0
 
 
 class GameResult(enum.Enum):
-    FINISHED = 'Finished'
-    DONE = 'Done'
-    FORFEITED_BY_WRONG_DONE = 'Forfeited by wrong done'
-    FORFEITED_BY_WRONG_DRAW = 'Forfeited by wrong draw'
-    FORFEITED_BEFORE_DOUBLE_DONE = 'Forfeited before double done'
+    FINISHED = 1
+    DONE = 2
+    FORFEITED_BY_WRONG_DONE = 3
+    FORFEITED_BY_WRONG_DRAW = 4
+    FORFEITED_BEFORE_DOUBLE_DONE = 5
+
+
+JOKER = 'Joker'
+PLAYER_RED = 'Player Red'
+PLAYER_BLACK = 'Player Black'
+INDENT = '{:10}'.format(str())
+
+DECK_PER_PILE = 9
+CARD_PER_DECK = 3
+REQUIRED_WIN = 3
+MAX_DIE = 2
+MAX_DONE = 1
+MAX_DRAW = 1
