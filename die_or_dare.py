@@ -54,8 +54,7 @@ class NameTextInput(NameInput):
         name = input(prompt)
         while not name.isalnum() or name == forbidden_name:
             if name == forbidden_name:
-                print("You can't use {}. Choose another name.".format(
-                    forbidden_name))
+                print("You can't use that name. Choose another name.")
             else:
                 print('Only alphanumeric characters are allowed.')
             name = input(prompt)
@@ -453,10 +452,10 @@ class DeckTextInput(DeckInput):
         valid_input = False
         input_value = None
         possessive = "your opponent's" if is_opponent else 'your'
-        prompt = '{}{}, choose one of {} deck (Enter the deck number): '.format(
-            constants.INDENT, player_name, possessive)
+        prompt = '{}, choose one of {} decks. (Enter the deck number): '.format(
+            player_name, possessive)
         while not valid_input:
-            input_value = input(prompt)
+            input_value = input(constants.INDENT + prompt)
             try:
                 input_value = int(input_value) - 1
                 if input_value not in user_input_to_deck:
@@ -465,8 +464,9 @@ class DeckTextInput(DeckInput):
                 choices_generator = (str(deck.index + 1) for deck in
                                      undisclosed_decks)
                 choices_str = ', '.join(choices_generator)
-                prompt = 'Invalid input. Enter a number among {}.'.format(
+                error_message = 'Enter a number among {}.\n'.format(
                     choices_str)
+                prompt = error_message + prompt
             else:
                 valid_input = True
         return cls(user_input_to_deck.get(input_value))
@@ -653,17 +653,15 @@ class Game(object):
     def prepare(self):
         duel = self.duel_ongoing
         if self.num_human_players == 2:
-            action_prompt = 'What will you two do?\nPress the keys!'
+            action_prompt = 'What will you two do?'
         else:
             action_prompt = 'What will you do?\nEnter your action!'
         if duel.offense.deck_in_duel is None:
-            message = 'Duel #{} started!'.format(duel.index + 1)
-            message += '\n{}, choose one of your decks.'.format(
-                duel.offense.name)
+            message = 'Duel #{} started! Time to choose the offense deck.'.format(
+                duel.index + 1)
             duration = constants.DELAY_BEFORE_DECK_CHOICE
         elif duel.defense.deck_in_duel is None:
-            message = '{}, choose one of your opponent\'s decks.'.format(
-                duel.offense.name)
+            message = 'Time to choose the defense deck.'
             duration = constants.DELAY_BEFORE_DECK_CHOICE
         elif duel.round_ in (1, 2):
             self.open_next_cards()
@@ -810,9 +808,9 @@ class Game(object):
                             duration = constants.DELAY_AFTER_GAME_ENDS
                         return message, duration
         if round_ in (1, 2):
-            message = "Ooh, double dare! Let's open the next cards."
             duration = constants.DELAY_BEFORE_CARD_OPEN
-            message += "\nCards will be opened in {} seconds!".format(duration)
+            message = "Ooh, double dare! Next cards will be opened in {} seconds!".format(
+                duration)
             # do nothing and move on to next round to open next cards
             return message, duration
         elif round_ == 3:
@@ -854,7 +852,7 @@ class Game(object):
             offense.deck_in_duel_index = offense.deck_in_duel.index
             message = 'Deck #{} chosen as the offense deck.'.format(index + 1)
         else:
-            message = 'Invalid deck choice. Choose an undisclosed deck.'
+            message = 'Choose an undisclosed deck.'
         duration = constants.DELAY_AFTER_DECK_CHOICE
         return message, duration
 
@@ -872,7 +870,7 @@ class Game(object):
             defense.deck_in_duel.opponent_deck_index = offense.deck_in_duel.index
             message = 'Deck #{} chosen as the defense deck.'.format(index + 1)
         else:
-            message = 'Invalid deck choice. choose an undisclosed deck.'
+            message = 'Choose an undisclosed deck.'
         duration = constants.DELAY_AFTER_DECK_CHOICE
         return message, duration
 
@@ -1144,7 +1142,7 @@ class HumanPlayer(Player):
         keys_settings_in_str = ', '.join(keys_settings_in_list)
         prompt = '{}, what will you do? ({})'.format(self.name,
                                                      keys_settings_in_str)
-        shout_input = input(prompt)
+        shout_input = input(constants.INDENT + prompt)
         key_to_action = {key: action for action, key in
                          self.key_settings.items()}
         action = key_to_action.get(shout_input)
