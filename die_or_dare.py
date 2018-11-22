@@ -775,7 +775,7 @@ class Game(object):
                                 duel.winner.name, constants.REQUIRED_WIN)
                             duration = constants.DELAY_AFTER_GAME_ENDS
                         return message, duration
-        if round_ in [1, 2]:
+        if round_ in (1, 2):
             message = "Ooh, double dare! Let's open the next cards."
             duration = constants.DELAY_BEFORE_CARD_OPEN
             message += "\nCards will be opened in {} seconds!".format(duration)
@@ -1409,8 +1409,8 @@ class Duel(object):
         self.winner = winner
         self.loser = loser
         if self.winner is None and self.loser is None:
-            if state not in [constants.DuelState.DIED,
-                             constants.DuelState.ABORTED_BY_CORRECT_DONE]:
+            if state not in (constants.DuelState.DIED,
+                             constants.DuelState.ABORTED_BY_CORRECT_DONE):
                 raise ValueError('Either winner or loser must be supplied.')
         else:
             if winner is None:
@@ -1539,46 +1539,46 @@ class OutputHandler(object):
                                                      red_stats)
         print(red_first_line)
         red_decks = game.player_red.decks
-        red_numbers = [('< #{} >' if deck.is_in_duel() else '#{}').format(
-            deck.index + 1) for deck in red_decks]
+        red_numbers = (('< #{} >' if deck.is_in_duel() else '#{}').format(
+            deck.index + 1) for deck in red_decks)
         red_number_line = row_format.format(*red_numbers)
         print(red_number_line)
-        red_undisclosed_delegates = [
+        red_undisclosed_delegates = (
             repr(deck.cards[0]) if deck.is_undisclosed() else '' for deck in
-            red_decks]
+            red_decks)
         print(row_format.format(*red_undisclosed_delegates))
-        red_opened_delegates = [
+        red_opened_delegates = (
             '' if deck.is_undisclosed() else repr(deck.cards[0]) for deck in
-            red_decks]
+            red_decks)
         print(row_format.format(*red_opened_delegates))
-        red_seconds = ['' if deck.is_undisclosed() else repr(deck.cards[1]) for
-                       deck in red_decks]
+        red_seconds = ('' if deck.is_undisclosed() else repr(deck.cards[1]) for
+                       deck in red_decks)
         print(row_format.format(*red_seconds))
-        red_lasts = ['' if deck.is_undisclosed() else repr(deck.cards[2]) for
-                     deck in red_decks]
+        red_lasts = ('' if deck.is_undisclosed() else repr(deck.cards[2]) for
+                     deck in red_decks)
         print(row_format.format(*red_lasts))
         print()
         print('{:^135}'.format(
             '' if duel is None else '[Duel #{}]'.format(duel.index + 1)))
         print()
         black_decks = game.player_black.decks
-        black_lasts = ['' if deck.is_undisclosed() else repr(deck.cards[2]) for
-                       deck in black_decks]
+        black_lasts = ('' if deck.is_undisclosed() else repr(deck.cards[2]) for
+                       deck in black_decks)
         print(row_format.format(*black_lasts))
-        black_seconds = ['' if deck.is_undisclosed() else repr(deck.cards[1])
-                         for deck in black_decks]
+        black_seconds = ('' if deck.is_undisclosed() else repr(deck.cards[1])
+                         for deck in black_decks)
         print(row_format.format(*black_seconds))
-        black_opened_delegates = [
+        black_opened_delegates = (
             '' if deck.is_undisclosed() else repr(deck.cards[0]) for
-            deck in black_decks]
+            deck in black_decks)
         print(row_format.format(*black_opened_delegates))
-        black_undisclosed_delegate = [
+        black_undisclosed_delegate = (
             repr(deck.cards[0]) if deck.is_undisclosed() else '' for
-            deck in black_decks]
+            deck in black_decks)
         print(row_format.format(*black_undisclosed_delegate))
-        black_numbers = [
+        black_numbers = (
             ('< #{} >' if deck.is_in_duel() else '#{}').format(
-                deck.index + 1) for deck in black_decks]
+                deck.index + 1) for deck in black_decks)
         black_number_line = row_format.format(*black_numbers)
         print(black_number_line)
         black_role = '' if duel is None else (
