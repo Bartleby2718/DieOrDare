@@ -7,11 +7,9 @@ def main():
     output_handler = OutputHandler()
 
     ### player initialization
-    if not run_in_batch:
-        print("I want to know your names first.")
-    player1 = DumbComputerPlayer()
+    player1 = ComputerPlayer()
     # player1 = HumanPlayer('Player 1, enter your name: ')
-    player2 = DumbComputerPlayer(player1.name)
+    player2 = ComputerPlayer(player1.name)
     # player2 = HumanPlayer('Player 2, enter your name: ', player1.name)
     # num_human_players = 2 - len(sys.argv[1:])
     # player1, player2 = PlayersSetup(num_human_players).run()
@@ -20,7 +18,7 @@ def main():
     message = "All right, {} and {}. Let's get started!".format(player1.name,
                                                                 player2.name)
     message += '\nLet\'s flip a coin to decide who will be the Player Red!'
-    duration = constants.DELAY_BEFORE_COIN_TOSS
+    duration = constants.Duration.BEFORE_COIN_TOSS
     if not run_in_batch:
         output_handler.display(message=message, duration=duration)
 
@@ -35,7 +33,7 @@ def main():
     message = '{}, you are the Player Red, so you will go first.'.format(
         player_red.name)
     message += '\n{}, you are the Player Black.'.format(player_black.name)
-    duration = constants.DELAY_AFTER_COIN_TOSS
+    duration = constants.Duration.AFTER_COIN_TOSS
     if not run_in_batch:
         output_handler.display(message=message, duration=duration)
 
@@ -67,7 +65,7 @@ def main():
                                         player_black.joker_position_strategy).pop()
 
     message = "Let's start DieOrDare!\nHere we go!"
-    duration = constants.DELAY_BEFORE_GAME_START
+    duration = constants.Duration.BEFORE_GAME_START
     if not run_in_batch:
         output_handler.display(message=message, duration=duration)
 
