@@ -342,6 +342,40 @@ class JokerPositionStrategyTextInput(JokerPositionStrategyInput):
         return cls(number_to_strategy.get(input_value))
 
 
+class OffenseDeckChoiceStrategy(abc.ABC):
+    @staticmethod
+    @abc.abstractmethod
+    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
+              num_victory_opponent, num_shout_die_opponent):
+        pass
+
+
+class BiggestOffenseDeck(OffenseDeckChoiceStrategy):
+    @staticmethod
+    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
+              num_victory_opponent, num_shout_die_opponent):
+        undisclosed_decks_me = [deck for deck in decks_me if
+                                deck.is_undisclosed()]
+        return max(undisclosed_decks_me, key=lambda x: x.index)
+
+
+class DefenseDeckChoiceStrategy(abc.ABC):
+    @staticmethod
+    @abc.abstractmethod
+    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
+              num_victory_opponent, num_shout_die_opponent, offense_deck=None):
+        pass
+
+
+class SmallestDefenseDeck(DefenseDeckChoiceStrategy):
+    @staticmethod
+    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
+              num_victory_opponent, num_shout_die_opponent, offense_deck=None):
+        undisclosed_decks_opponent = [deck for deck in decks_opponent if
+                                      deck.is_undisclosed()]
+        return min(undisclosed_decks_opponent, key=lambda x: x.index)
+
+
 class ActionChoiceStrategy(abc.ABC):
     @staticmethod
     @abc.abstractmethod
@@ -644,9 +678,9 @@ class Game(object):
     def accept(self):
         duel = self.duel_ongoing
         if duel.offense.deck_in_duel is None:
-            return self.decide_decks_for_duel(is_opponent=False)
+            return self.decide_offense_deck()
         elif duel.defense.deck_in_duel is None:
-            return self.decide_decks_for_duel(is_opponent=True)
+            return self.decide_defense_deck()
         elif duel.round_ in (1, 2):
             timeout = constants.TIME_LIMIT_FOR_ACTION
             return self.get_actions(timeout=timeout)
@@ -842,21 +876,32 @@ class Game(object):
         duration = constants.DELAY_AFTER_DECK_CHOICE
         return message, duration
 
-    def decide_decks_for_duel(self, is_opponent):
+    def decide_offense_deck(self):
         duel = self.duel_ongoing
         offense, defense = duel.players()
-        if is_opponent:
-            player = defense
-            class_ = DefenseDeckChoiceInput
-        else:
-            player = offense
-            class_ = OffenseDeckChoiceInput
         # Skip choosing deck in the last duel
         if self.duel_index == constants.DECK_PER_PILE - 1:
-            deck = player.undisclosed_decks().pop()
+            offense_undisclosed_decks = offense.undisclosed_decks()
+            deck = next(offense_undisclosed_decks)
         else:
-            deck = offense.decide_deck_for_duel(defense.decks, is_opponent)
-        return class_(deck.index)
+            deck = offense.decide_offense_deck(defense.decks,
+                                               defense.num_victory,
+                                               defense.num_shout_die)
+        return OffenseDeckChoiceInput(deck.index)
+
+    def decide_defense_deck(self):
+        duel = self.duel_ongoing
+        offense, defense = duel.players()
+        # Skip choosing deck in the last duel
+        if self.duel_index == constants.DECK_PER_PILE - 1:
+            defense_undisclosed_decks = defense.undisclosed_decks()
+            deck = next(defense_undisclosed_decks)
+        else:
+            deck = offense.decide_defense_deck(defense.decks,
+                                               defense.num_victory,
+                                               defense.num_shout_die,
+                                               offense.deck_in_duel)
+        return DefenseDeckChoiceInput(deck.index)
 
     def end(self, result, winner=None, loser=None):
         self.over = True
@@ -985,7 +1030,13 @@ class Player(object):
         pass
 
     @abc.abstractmethod
-    def decide_deck_for_duel(self, opponent_decks, is_opponent):
+    def decide_offense_deck(self, decks_opponent, num_victory_opponent,
+                            num_shout_die_opponent):
+        pass
+
+    @abc.abstractmethod
+    def decide_defense_deck(self, decks_opponent, num_victory_opponent,
+                            num_shout_die_opponent, offense_deck):
         pass
 
     def open_next_card(self):
@@ -1067,11 +1118,20 @@ class HumanPlayer(Player):
         JokerAnywhere.apply(cards)
         return tuple(cards)
 
-    def decide_deck_for_duel(self, opponent_decks, is_opponent):
-        decks = opponent_decks if is_opponent else self.decks
-        undisclosed_decks = [deck for deck in decks if deck.is_undisclosed()]
-        return DeckTextInput.from_human(self.name, is_opponent,
-                                        undisclosed_decks).pop()
+    def decide_offense_deck(self, decks_opponent, num_victory_opponent,
+                            num_shout_die_opponent):
+        undisclosed_decks = self.undisclosed_decks()
+        deck_input = DeckTextInput.from_human(self.name, False,
+                                              undisclosed_decks)
+        return deck_input.pop()
+
+    def decide_defense_deck(self, decks_opponent, num_victory_opponent,
+                            num_shout_die_opponent, offense_deck=None):
+        undisclosed_decks = [deck for deck in decks_opponent if
+                             deck.is_undisclosed()]
+        deck_input = DeckTextInput.from_human(self.name, True,
+                                              undisclosed_decks)
+        return deck_input.pop()
 
     def shout(self, decks_opponent, num_victory_opponent,
               num_shout_die_opponent, round_, in_turn):
@@ -1093,9 +1153,13 @@ class HumanPlayer(Player):
 
 class ComputerPlayer(Player):
     def __init__(self, forbidden_name='',
+                 offense_deck_choice_strategy=BiggestOffenseDeck,
+                 defense_deck_choice_strategy=SmallestDefenseDeck,
                  action_choice_strategy=SimpleActionChoiceStrategy):
         super().__init__()
         self.name = NameTextInput.auto_generate(forbidden_name).pop()
+        self.offense_deck_choice_strategy = offense_deck_choice_strategy
+        self.defense_deck_choice_strategy = defense_deck_choice_strategy
         self.action_choice_strategy = action_choice_strategy
 
     def set_keys(self, blacklist=None):
@@ -1114,9 +1178,21 @@ class ComputerPlayer(Player):
     def decide_delegate(self, cards):
         pass
 
-    @abc.abstractmethod
-    def decide_deck_for_duel(self, opponent_decks, is_opponent):
-        pass
+    def decide_offense_deck(self, decks_opponent, num_victory_opponent,
+                            num_shout_die_opponent):
+        strategy = self.offense_deck_choice_strategy
+        deck = strategy.apply(self.decks, decks_opponent, self.num_victory,
+                              self.num_shout_die, num_victory_opponent,
+                              num_shout_die_opponent)
+        return deck
+
+    def decide_defense_deck(self, decks_opponent, num_victory_opponent,
+                            num_shout_die_opponent, offense_deck):
+        strategy = self.defense_deck_choice_strategy
+        deck = strategy.apply(self.decks, decks_opponent, self.num_victory,
+                              self.num_shout_die, num_victory_opponent,
+                              num_shout_die_opponent, offense_deck)
+        return deck
 
     @staticmethod
     def get_chances(decks_me, decks_opponent,
@@ -1193,11 +1269,6 @@ class ComputerPlayer(Player):
         odds_lose = round(num_lose / total, 3)
         return odds_win, odds_draw, odds_lose
 
-    @staticmethod
-    def get_smallest_undisclosed_deck(decks):
-        return min([deck for deck in decks if deck.is_undisclosed()],
-                   key=lambda x: x.index)
-
     @classmethod
     def undisclosed_values(cls, decks):
         values = set(rank.value for rank in constants.Rank)
@@ -1227,16 +1298,6 @@ class DumbComputerPlayer(ComputerPlayer):
     def decide_delegate(self, cards):
         JokerFirst.apply(cards)
         return cards
-
-    def decide_deck_for_duel(self, opponent_decks, is_opponent):
-        if is_opponent:
-            undisclosed_decks = [deck for deck in opponent_decks if
-                                 deck.is_undisclosed()]
-            return min(undisclosed_decks, key=lambda x: x.index)
-        else:
-            undisclosed_decks = [deck for deck in self.decks if
-                                 deck.is_undisclosed()]
-            return max(undisclosed_decks, key=lambda x: x.index)
 
 
 class Card(object):
