@@ -422,9 +422,9 @@ class SimpleActionChoiceStrategy(ActionChoiceStrategy):
             deck_in_duel_opponent = next(
                 (deck for deck in decks_opponent if
                  deck.is_in_duel()))
-            sum_me = sum(card.value for card in deck_in_duel_me.cards)
+            sum_me = sum(card.value for card in deck_in_duel_me)
             sum_opponent = sum(
-                card.value for card in deck_in_duel_opponent.cards)
+                card.value for card in deck_in_duel_opponent)
             if sum_me == sum_opponent:
                 return constants.Action.DRAW
             else:
@@ -813,10 +813,8 @@ class Game(object):
             # do nothing and move on to next round to open next cards
             return message, duration
         elif round_ == 3:
-            sum_offense = sum(card.value for card in
-                              duel.offense.deck_in_duel.cards)
-            sum_defense = sum(card.value for card in
-                              duel.defense.deck_in_duel.cards)
+            sum_offense = sum(card.value for card in duel.offense.deck_in_duel)
+            sum_defense = sum(card.value for card in duel.defense.deck_in_duel)
             if sum_offense > sum_defense:
                 duel.end(constants.DuelState.FINISHED, winner=duel.offense)
                 message = '{0} has a greater sum, so {0} gets a point. Duel #{1} ended.'.format(
@@ -1020,7 +1018,7 @@ class Player(object):
         deck = self.decks[self._deck_in_duel_index]
         if deck.card_to_open_index is None:
             deck.card_to_open_index = 1
-        card_to_open = deck.cards[deck.card_to_open_index]
+        card_to_open = deck[deck.card_to_open_index]
         card_to_open.open_up()
         deck.card_to_open_index += 1
         if deck.card_to_open_index == 3:
@@ -1156,14 +1154,14 @@ class ComputerPlayer(Player):
 
         # get my hidden cards
         deck_in_duel_me = next(deck for deck in decks_me if deck.is_in_duel())
-        num_opened = sum(1 for card in deck_in_duel_me.cards if card.is_open())
+        num_opened = sum(1 for card in deck_in_duel_me if card.is_open())
         current_sum_me = sum(
-            card.value for card in deck_in_duel_me.cards if card.is_open())
+            card.value for card in deck_in_duel_me if card.is_open())
         num_to_open = 3 - num_opened
         delegate_value_me = deck_in_duel_me.delegate().value
         hidden_cards_me = []
         for deck in decks_me:
-            for card in deck.cards:
+            for card in deck:
                 if not card.is_open():
                     if card.is_joker() or card.value <= delegate_value_me:
                         hidden_cards_me.append(card)
@@ -1171,12 +1169,12 @@ class ComputerPlayer(Player):
         deck_in_duel_opponent = next(
             deck for deck in decks_opponent if deck.is_in_duel())
         current_sum_opponent = sum(
-            card.value for card in deck_in_duel_opponent.cards if
+            card.value for card in deck_in_duel_opponent if
             card.is_open())
         delegate_value_opponent = deck_in_duel_opponent.delegate().value
         hidden_cards_opponent = []
         for deck in decks_opponent:
-            for card in deck.cards:
+            for card in deck:
                 if not card.is_open():
                     if card.is_joker() or card.value <= delegate_value_opponent:
                         hidden_cards_opponent.append(card)
@@ -1306,6 +1304,9 @@ class Deck(object):
 
     def __repr__(self):
         return ' / '.join(repr(card) for card in self._cards)
+
+    def __getitem__(self, index):
+        return self._cards[index]
 
     @property
     def index(self):
@@ -1442,10 +1443,8 @@ class Duel(object):
                 'Either the offense deck or the defense deck must be supplied.')
 
     def is_drawn(self):
-        sum_offense = sum(
-            card.value for card in self.offense.deck_in_duel.cards)
-        sum_defense = sum(
-            card.value for card in self.defense.deck_in_duel.cards)
+        sum_offense = sum(card.value for card in self.offense.deck_in_duel)
+        sum_defense = sum(card.value for card in self.defense.deck_in_duel)
         return sum_offense == sum_defense
 
     def is_over(self):
@@ -1477,7 +1476,7 @@ class Duel(object):
             self.winner.num_victory += 1
         for player in self.players:
             player.deck_in_duel.finish()
-            for card in player.deck_in_duel.cards:
+            for card in player.deck_in_duel:
                 card.open_up()
             player.deck_in_duel = None
 
@@ -1599,17 +1598,17 @@ class OutputHandler(object):
         red_number_line = row_format.format(*red_numbers)
         print(red_number_line)
         red_undisclosed_delegates = (
-            repr(deck.cards[0]) if deck.is_undisclosed() else '' for deck in
+            repr(deck[0]) if deck.is_undisclosed() else '' for deck in
             red_decks)
         print(row_format.format(*red_undisclosed_delegates))
         red_opened_delegates = (
-            '' if deck.is_undisclosed() else repr(deck.cards[0]) for deck in
+            '' if deck.is_undisclosed() else repr(deck[0]) for deck in
             red_decks)
         print(row_format.format(*red_opened_delegates))
-        red_seconds = ('' if deck.is_undisclosed() else repr(deck.cards[1]) for
+        red_seconds = ('' if deck.is_undisclosed() else repr(deck[1]) for
                        deck in red_decks)
         print(row_format.format(*red_seconds))
-        red_lasts = ('' if deck.is_undisclosed() else repr(deck.cards[2]) for
+        red_lasts = ('' if deck.is_undisclosed() else repr(deck[2]) for
                      deck in red_decks)
         print(row_format.format(*red_lasts))
         print()
@@ -1617,18 +1616,18 @@ class OutputHandler(object):
             '' if duel is None else '[Duel #{}]'.format(duel.index + 1)))
         print()
         black_decks = game.player_black.decks
-        black_lasts = ('' if deck.is_undisclosed() else repr(deck.cards[2]) for
+        black_lasts = ('' if deck.is_undisclosed() else repr(deck[2]) for
                        deck in black_decks)
         print(row_format.format(*black_lasts))
-        black_seconds = ('' if deck.is_undisclosed() else repr(deck.cards[1])
+        black_seconds = ('' if deck.is_undisclosed() else repr(deck[1])
                          for deck in black_decks)
         print(row_format.format(*black_seconds))
         black_opened_delegates = (
-            '' if deck.is_undisclosed() else repr(deck.cards[0]) for
+            '' if deck.is_undisclosed() else repr(deck[0]) for
             deck in black_decks)
         print(row_format.format(*black_opened_delegates))
         black_undisclosed_delegate = (
-            repr(deck.cards[0]) if deck.is_undisclosed() else '' for
+            repr(deck[0]) if deck.is_undisclosed() else '' for
             deck in black_decks)
         print(row_format.format(*black_undisclosed_delegate))
         black_numbers = (
