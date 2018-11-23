@@ -22,7 +22,7 @@ def main():
     if not run_in_batch:
         output_handler.display(message=message, duration=duration)
 
-    # player_red, player_black = RandomPlayerOrder(player1, player2).pop()
+    # player_red, player_black = RandomPlayerOrder(player1, player2).players
     player_red, player_black = player1, player2
 
     red_pile = RedPile()
@@ -39,21 +39,21 @@ def main():
 
     ### key settings
     player_red.key_settings = KeySettingsInput.bottom_left()
-    # player_red.key_settings = KeySettingsTextInput.from_human(player_red.name).pop()
+    # player_red.key_settings = KeySettingsTextInput.from_human(player_red.name).value()
     player_black.key_settings = KeySettingsInput.top_right()
     # blacklist = list(player_red.key_settings.values())
-    # player_black.key_settings = KeySettingsTextInput.from_human(player_black.name, blacklist).pop()
+    # player_black.key_settings = KeySettingsTextInput.from_human(player_black.name, blacklist).value()
 
     ### joker value strategy
-    # player_red.joker_value_strategy = JokerValueStrategyTextInput.from_human(player_red.name).pop()
+    # player_red.joker_value_strategy = JokerValueStrategyTextInput.from_human(player_red.name).value()
     player_red.joker_value_strategy = SameAsMax
-    # player_black.joker_value_strategy = JokerValueStrategyTextInput.from_human(player_black.name).pop()
+    # player_black.joker_value_strategy = JokerValueStrategyTextInput.from_human(player_black.name).value()
     player_black.joker_value_strategy = SameAsMax
 
     ### delegate strategy
-    # player_red.joker_position_strategy = JokerPositionStrategyTextInput.from_human(player_red.name).pop()
+    # player_red.joker_position_strategy = JokerPositionStrategyTextInput.from_human(player_red.name).value()
     player_red.joker_position_strategy = JokerLast
-    # player_black.joker_position_strategy = JokerPositionStrategyTextInput.from_human(player_black.name).pop()
+    # player_black.joker_position_strategy = JokerPositionStrategyTextInput.from_human(player_black.name).value()
     player_black.joker_position_strategy = JokerLast
 
     # initialize decks
