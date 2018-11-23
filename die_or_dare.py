@@ -666,7 +666,7 @@ class Game(object):
             self._open_next_cards()
             duel.to_next_round()
             message = action_prompt
-            duration = constants.Duration.ACTION
+            duration = constants.Duration.BEFORE_ACTION
         else:
             message = 'Something went wrong.'
             duration = None
