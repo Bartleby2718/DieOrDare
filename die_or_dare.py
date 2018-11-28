@@ -1095,8 +1095,12 @@ class HumanPlayer(Player):
         shout_input = input(constants.INDENT + prompt)
         key_to_action = {key: action for action, key in
                          self.key_settings.items()}
-        action = key_to_action.get(shout_input)
-        return Shout(self, action)
+        for shout_str in shout_input:
+            action = key_to_action.get(shout_str)
+            if action is not None:
+                return Shout(self, action)
+        else:
+            return Shout(self, None)
 
 
 class ComputerPlayer(Player):
