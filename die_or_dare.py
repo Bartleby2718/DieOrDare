@@ -51,7 +51,7 @@ class NameInput(Input):
 
 class NameTextInput(NameInput):
     @classmethod
-    def from_human(cls, prompt, forbidden_name=''):
+    def from_human(cls, prompt, forbidden_name=None):
         name = input(prompt)
         while not name.isalnum() or name == forbidden_name:
             if name == forbidden_name:
@@ -942,7 +942,7 @@ class DeckRandomizer(object):
 
 
 class Player(object):
-    def __init__(self, name='', deck_in_duel_index=None, num_victory=0,
+    def __init__(self, name=None, deck_in_duel_index=None, num_victory=0,
                  num_shout_die=0, num_shout_done=0, num_shout_draw=0,
                  decks=None, pile=None, key_settings=None,
                  alias=None, recent_action=None):
@@ -1057,7 +1057,7 @@ class Player(object):
 
 
 class HumanPlayer(Player):
-    def __init__(self, prompt, forbidden_name=''):
+    def __init__(self, prompt, forbidden_name=None):
         super().__init__()
         self.name = NameTextInput.from_human(prompt, forbidden_name).value
 
@@ -1095,12 +1095,16 @@ class HumanPlayer(Player):
         shout_input = input(constants.INDENT + prompt)
         key_to_action = {key: action for action, key in
                          self.key_settings.items()}
-        action = key_to_action.get(shout_input)
-        return Shout(self, action)
+        for shout_str in shout_input:
+            action = key_to_action.get(shout_str)
+            if action is not None:
+                return Shout(self, action)
+        else:
+            return Shout(self, None)
 
 
 class ComputerPlayer(Player):
-    def __init__(self, forbidden_name='',
+    def __init__(self, forbidden_name=None,
                  offense_deck_index_strategy=BiggestOffenseDeck,
                  defense_deck_index_strategy=SmallestDefenseDeck,
                  action_choice_strategy=SimpleActionChoiceStrategy):
@@ -1700,5 +1704,98 @@ class OutputHandler(object):
             self.states = jsonpickle.decode(content)
 
 
+def main():
+    output_handler = OutputHandler()
+
+    ### player initialization
+    # player1 = ComputerPlayer()
+    player1 = HumanPlayer('Player 1, enter your name: ')
+    player2 = ComputerPlayer(player1.name)
+    # player2 = HumanPlayer('Player 2, enter your name: ', player1.name)
+    # num_human_players = 2 - len(sys.argv[1:])
+    # player1, player2 = PlayersSetup(num_human_players).run()
+
+    ### red/black decision
+    message = "All right, {} and {}. Let's get started!".format(player1.name,
+                                                                player2.name)
+    message += '\nLet\'s flip a coin to decide who will be the Player Red!'
+    duration = constants.Duration.BEFORE_COIN_TOSS
+    if not run_in_batch:
+        output_handler.display(message=message, duration=duration)
+
+    # player_red, player_black = RandomPlayerOrder(player1, player2).players
+    player_red, player_black = player1, player2
+
+    red_pile = RedPile()
+    player_red.take_pile(red_pile)
+    black_pile = BlackPile()
+    player_black.take_pile(black_pile)
+
+    message = '{}, you are the Player Red, so you will go first.'.format(
+        player_red.name)
+    message += '\n{}, you are the Player Black.'.format(player_black.name)
+    duration = constants.Duration.AFTER_COIN_TOSS
+    if not run_in_batch:
+        output_handler.display(message=message, duration=duration)
+
+    ### key settings
+    player_red.key_settings = KeySettingsInput.bottom_left()
+    # player_red.key_settings = KeySettingsTextInput.from_human(player_red.name).value()
+    player_black.key_settings = KeySettingsInput.top_right()
+    # blacklist = list(player_red.key_settings.values())
+    # player_black.key_settings = KeySettingsTextInput.from_human(player_black.name, blacklist).value()
+
+    ### joker value strategy
+    # player_red.joker_value_strategy = JokerValueStrategyTextInput.from_human(player_red.name).value()
+    player_red.joker_value_strategy = SameAsMax
+    # player_black.joker_value_strategy = JokerValueStrategyTextInput.from_human(player_black.name).value()
+    player_black.joker_value_strategy = SameAsMax
+
+    ### delegate strategy
+    # player_red.joker_position_strategy = JokerPositionStrategyTextInput.from_human(player_red.name).value()
+    player_red.joker_position_strategy = JokerLast
+    # player_black.joker_position_strategy = JokerPositionStrategyTextInput.from_human(player_black.name).value()
+    player_black.joker_position_strategy = JokerLast
+
+    # initialize decks
+    player_red.decks = DeckRandomizer(player_red.pile,
+                                      player_red.joker_value_strategy,
+                                      player_red.joker_position_strategy).pop()
+    player_black.decks = DeckRandomizer(player_black.pile,
+                                        player_black.joker_value_strategy,
+                                        player_black.joker_position_strategy).pop()
+
+    message = "Let's start DieOrDare!\nHere we go!"
+    duration = constants.Duration.BEFORE_GAME_START
+    if not run_in_batch:
+        output_handler.display(message=message, duration=duration)
+
+    game = Game(player_red, player_black)
+
+    while not game.is_over():
+        duel = game.to_next_duel()
+        while not duel.is_over():
+            message, duration = game.prepare()
+            if run_in_batch:
+                output_handler.save(game.to_json(), message)
+            else:
+                output_handler.save_and_display(game.to_json(), message,
+                                                duration)
+            user_input = game.accept()
+            message, duration = game.process(user_input)
+            if run_in_batch:
+                output_handler.save(game.to_json(), message)
+            else:
+                output_handler.save_and_display(game.to_json(), message,
+                                                duration)
+    output_handler.export_game_states(final_state_only=True)
+
+
 if __name__ == '__main__':
-    pass
+    run_in_batch = False
+    if run_in_batch:
+        for i in range(50):
+            print(i + 1)
+            main()
+    else:
+        main()
