@@ -964,7 +964,7 @@ class Player(object):
         self.action_choice_strategy = action_choice_strategy
 
     def valid_actions(self, round_):
-        actions = [None, constants.Action.DONE]
+        actions = [constants.Action.DONE]
         if round_ == 1:
             actions.append(constants.Action.DARE)
             if self.num_shout_die < constants.MAX_DIE:
@@ -974,6 +974,7 @@ class Player(object):
             if self.num_shout_die < constants.MAX_DIE:
                 actions.append(constants.Action.DIE)
         elif round_ == 3:
+            actions.append(None)
             if self.num_shout_draw < constants.MAX_DRAW:
                 actions.append(constants.Action.DRAW)
         else:
@@ -1102,8 +1103,9 @@ class HumanPlayer(Player):
         keys_settings_in_list = ['{}: \'{}\''.format(action.name, key) for
                                  action, key in self.key_settings.items() if
                                  action in allowed_actions]
-        do_nothing = 'Pass: \'Enter\''
-        keys_settings_in_list.append(do_nothing)
+        if None in allowed_actions:
+            do_nothing = 'Pass: \'Enter\''
+            keys_settings_in_list.append(do_nothing)
         keys_settings_in_str = ', '.join(keys_settings_in_list)
         prompt = '{}, what will you do? ({})'.format(self.name,
                                                      keys_settings_in_str)
