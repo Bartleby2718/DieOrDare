@@ -55,10 +55,10 @@ class NameTextInput(NameInput):
         name = input(prompt)
         while not name.isalnum() or name == forbidden_name:
             if name == forbidden_name:
-                print("You can't use that name. Choose another name.")
+                error_message = "You can't use that name. Choose another name."
             else:
-                print('Only alphanumeric characters are allowed.')
-            name = input(prompt)
+                error_message = 'Only alphanumeric characters are allowed.'
+            name = input(error_message + '\n' + prompt)
         return cls(name)
 
     @classmethod
@@ -110,7 +110,6 @@ class KeySettingsTextInput(KeySettingsInput):
         key_settings = {action: '' for action in constants.Action}
         if blacklist is None:
             blacklist = []
-        print('\n{}, decide the set of keys you will use.'.format(player_name))
         for action in key_settings:
             prompt = '{}, which key will you use to indicate {}? '.format(
                 player_name, action.name)
@@ -121,13 +120,13 @@ class KeySettingsTextInput(KeySettingsInput):
             is_valid_key = is_single and is_lower and is_not_duplicate
             while not is_valid_key:
                 if key in blacklist:
-                    print("You can't use the following key(s): {}".format(
-                        ', '.join(blacklist)))
+                    error_message = "You can't use the following key(s): {}".format(
+                        ', '.join(blacklist))
                 else:
-                    print('Use a single lowercase alphabet.')
+                    error_message = 'Use a single lowercase alphabet.'
                 prompt = '{}, which key will you use to indicate {}? '.format(
                     player_name, action.name)
-                key = input(prompt)
+                key = input(error_message + '\n' + prompt)
                 is_single = len(key) == 1
                 is_lower = key.islower()
                 is_not_duplicate = key not in blacklist
@@ -147,6 +146,7 @@ class JokerValueStrategy(abc.ABC):
 class Thirteen(JokerValueStrategy):
     @staticmethod
     def apply(cards):
+        """Assign 13."""
         for card in cards:
             if card.is_joker():
                 card.value = max(constants.Rank.value)
@@ -156,6 +156,7 @@ class Thirteen(JokerValueStrategy):
 class SameAsMax(JokerValueStrategy):
     @staticmethod
     def apply(cards):
+        """Assign the biggest value that is already in the deck."""
         if any(card.is_joker() for card in cards):
             joker = next(card for card in cards if card.is_joker())
             cards_without_joker = [card for card in cards if card != joker]
@@ -166,6 +167,7 @@ class SameAsMax(JokerValueStrategy):
 class RandomNumber(JokerValueStrategy):
     @staticmethod
     def apply(cards):
+        """Assign a random number."""
         for card in cards:
             if card.is_joker():
                 values = [rank.value for rank in constants.Rank]
@@ -176,6 +178,7 @@ class RandomNumber(JokerValueStrategy):
 class NextBiggest(JokerValueStrategy):
     @staticmethod
     def apply(cards):
+        """Assign the next biggest value that is not yet in the deck."""
         if any(card.is_joker() for card in cards):
             joker = next(card for card in cards if card.is_joker())
             cards_without_joker = [card for card in cards if card != joker]
@@ -202,6 +205,7 @@ class JokerPositionStrategy(abc.ABC):
 class JokerFirst(JokerPositionStrategy):
     @staticmethod
     def apply(cards):
+        """Make the joker a delegate to reveal it as soon as possible."""
         biggest = max(cards, key=lambda x: x.value)
         biggest_index = cards.index(biggest)
         cards[0], cards[biggest_index] = cards[biggest_index], cards[0]
@@ -223,6 +227,7 @@ class JokerFirst(JokerPositionStrategy):
 class JokerLast(JokerPositionStrategy):
     @staticmethod
     def apply(cards):
+        """Put the joker in the last position to hide it as long as possible."""
         biggest = max(cards, key=lambda x: x.value)
         biggest_index = cards.index(biggest)
         cards[0], cards[biggest_index] = cards[biggest_index], cards[0]
@@ -247,6 +252,7 @@ class JokerLast(JokerPositionStrategy):
 class JokerAnywhere(JokerPositionStrategy):
     @staticmethod
     def apply(cards):
+        """Put the joker anywhere within the deck."""
         biggest = max(cards, key=lambda x: x.value)  # may or may not be a joker
         biggest_index = cards.index(biggest)
         cards[0], cards[biggest_index] = cards[biggest_index], cards[0]
@@ -275,24 +281,23 @@ class JokerValueStrategyTextInput(JokerValueStrategyInput):
                               4: NextBiggest}
         valid_input = False
         input_value = None
+        error_message = ''
+        prompt = '\n{}, what value would you assign to your joker?'.format(
+            player_name)
+        prompt += ''.join('\n{}: {}'.format(number, strategy.apply.__doc__) for
+                          number, strategy in number_to_strategy.items())
+        prompt += '\nEnter a corresponding number: '
         while not valid_input:
-            print(
-                '\n{}, enter the number corresponding to the strategy you want.'.format(
-                    player_name))
-            print('Press 1 to set the value of Joker to 13.')
-            print(
-                'Press 2 to set the value of Joker to be equal to the biggest value in the deck.')
-            print('Press 3 to set the value of Joker to be a random number.')
-            print(
-                'Press 4 to set the value of Joker to be the biggest value that is not in the deck.')
-            prompt = 'What is your choice? '
-            input_value = input(prompt)
+            input_value = input(error_message + '\n' + prompt)
             try:
                 input_value = int(input_value)
                 if input_value not in number_to_strategy:
                     raise ValueError('Input not among choices.')
             except ValueError:
-                print('Invalid input.')
+                numbers = (str(number) for number in number_to_strategy)
+                numbers_concatenated = ', '.join(numbers)
+                error_message = 'Enter a number among {}.'.format(
+                    numbers_concatenated)
             else:
                 valid_input = True
         strategy = number_to_strategy.get(input_value)
@@ -321,21 +326,22 @@ class JokerPositionStrategyTextInput(JokerPositionStrategyInput):
         number_to_strategy = {1: JokerFirst, 2: JokerLast, 3: JokerAnywhere}
         valid_input = False
         input_value = None
+        error_message = ''
+        prompt = '\n{}, where in the deck would you put the joker?'.format(
+            player_name)
+        prompt += ''.join('\n{}: {}'.format(number, strategy.apply.__doc__) for
+                          number, strategy in number_to_strategy.items())
+        prompt += '\nEnter a corresponding number: '
         while not valid_input:
-            print(
-                '\n{}, enter the number corresponding to the strategy you want.'.format(
-                    player_name))
-            print('Enter 1 to reveal the joker as soon as possible.')
-            print('Enter 2 to hide the joker as long as possible.')
-            print('Enter 3 to put joker anywhere.')
-            prompt = 'What is your choice? '
-            input_value = input(prompt)
+            input_value = input(error_message + prompt)
             try:
                 input_value = int(input_value)
                 if input_value not in number_to_strategy:
                     raise ValueError('Input not among choices.')
             except ValueError:
-                print('Invalid input.')
+                numbers = (str(number) for number in number_to_strategy)
+                choices_str = ', '.join(numbers)
+                error_message = 'Enter a number among {}.\n'.format(choices_str)
             else:
                 valid_input = True
         strategy = number_to_strategy.get(input_value)
@@ -359,6 +365,14 @@ class BiggestOffenseDeck(OffenseDeckChoiceStrategy):
         return max(undisclosed_decks_me, key=lambda x: x.index)
 
 
+class AnyOffenseDeck(OffenseDeckChoiceStrategy):
+    @staticmethod
+    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
+              num_victory_opponent, num_shout_die_opponent):
+        undisclosed_decks = [deck for deck in decks_me if deck.is_undisclosed()]
+        return random.choice(undisclosed_decks)
+
+
 class DefenseDeckChoiceStrategy(abc.ABC):
     @staticmethod
     @abc.abstractmethod
@@ -374,6 +388,15 @@ class SmallestDefenseDeck(DefenseDeckChoiceStrategy):
         undisclosed_decks_opponent = [deck for deck in decks_opponent if
                                       deck.is_undisclosed()]
         return min(undisclosed_decks_opponent, key=lambda x: x.index)
+
+
+class AnyDefenseDeck(DefenseDeckChoiceStrategy):
+    @staticmethod
+    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
+              num_victory_opponent, num_shout_die_opponent, offense_deck=None):
+        undisclosed_decks = [deck for deck in decks_opponent if
+                             deck.is_undisclosed()]
+        return random.choice(undisclosed_decks)
 
 
 class ActionChoiceStrategy(abc.ABC):
@@ -465,8 +488,7 @@ class DeckTextInput(DeckInput):
                 choices_generator = (str(deck.index + 1) for deck in
                                      undisclosed_decks)
                 choices_str = ', '.join(choices_generator)
-                error_message = 'Enter a number among {}.\n'.format(
-                    choices_str)
+                error_message = 'Enter a number among {}.\n'.format(choices_str)
                 prompt = error_message + prompt
             else:
                 valid_input = True
@@ -627,14 +649,9 @@ class Game(object):
     def players(self):
         return self.player_red, self.player_black
 
-    def initialize_decks(self):
+    def build_decks(self):
         for player in self.players:
-            player.initialize_decks()
-
-    def set_keys(self):
-        self.player_red.set_keys()
-        player_red_keys = list(self.player_red.key_settings.values())
-        self.player_black.set_keys(blacklist=player_red_keys)
+            player.build_decks()
 
     def _open_next_cards(self):
         for player in self.players:
@@ -909,43 +926,23 @@ class Game(object):
             else:
                 self.loser = self.player_black
 
+    def distribute_piles(self):
+        red_pile = RedPile()
+        self.player_red.take_pile(red_pile)
+        black_pile = BlackPile()
+        self.player_black.take_pile(black_pile)
+
     def to_json(self):
         return jsonpickle.encode(self)
-
-
-class DeckRandomizer(object):
-    def __init__(self, pile, joker_value_strategy=Thirteen,
-                 joker_position_strategy=JokerLast):
-        self._pile = pile
-        self._joker_value_strategy = joker_value_strategy
-        self._joker_position_strategy = joker_position_strategy
-
-    def pop(self):
-        pile = list(self._pile)
-        random.shuffle(pile)
-        decks_previous = []
-        for j in range(constants.DECK_PER_PILE):
-            cards = []
-            for k in range(constants.CARD_PER_DECK):
-                new_card = pile.pop()
-                cards.append(new_card)
-            self._joker_value_strategy.apply(cards)
-            self._joker_position_strategy.apply(cards)
-            decks_previous.append(tuple(cards))
-        decks_previous.sort(key=lambda x: x[0].value)
-        decks = []
-        for index, cards in enumerate(decks_previous):
-            deck = Deck(cards, index=index)
-            deck.delegate().open_up()
-            decks.append(deck)
-        return tuple(decks)
 
 
 class Player(object):
     def __init__(self, name=None, deck_in_duel_index=None, num_victory=0,
                  num_shout_die=0, num_shout_done=0, num_shout_draw=0,
-                 decks=None, pile=None, key_settings=None,
-                 alias=None, recent_action=None):
+                 decks=None, pile=None, key_settings=None, alias=None,
+                 recent_action=None, joker_value_strategy=None,
+                 joker_position_strategy=None, offense_deck_index_strategy=None,
+                 defense_deck_index_strategy=None, action_choice_strategy=None):
         self.name = name
         self._deck_in_duel_index = deck_in_duel_index
         self.deck_in_duel = None
@@ -960,6 +957,11 @@ class Player(object):
         self.key_settings = key_settings
         self.alias = alias
         self.recent_action = recent_action
+        self.joker_value_strategy = joker_value_strategy
+        self.joker_position_strategy = joker_position_strategy
+        self.offense_deck_index_strategy = offense_deck_index_strategy
+        self.defense_deck_index_strategy = defense_deck_index_strategy
+        self.action_choice_strategy = action_choice_strategy
 
     def valid_actions(self, round_):
         actions = [None, constants.Action.DONE]
@@ -985,19 +987,33 @@ class Player(object):
         if isinstance(pile, RedPile):
             self.pile = pile.cards
             self.alias = constants.PLAYER_RED
+            self.key_settings = KeySettingsInput.bottom_left()
         elif isinstance(pile, BlackPile):
-            self.pile = pile._cards
+            self.pile = pile.cards
             self.alias = constants.PLAYER_BLACK
+            self.key_settings = KeySettingsInput.top_right()
         else:
             raise ValueError('This is not a pile.')
 
-    def initialize_decks(self, joker_value_strategy, joker_position_strategy):
-        self.decks = DeckRandomizer(self.pile, joker_value_strategy,
-                                    joker_position_strategy).pop()
-
-    @abc.abstractmethod
-    def set_keys(self, blacklist=None):
-        pass
+    def build_decks(self):
+        pile = list(self.pile)
+        random.shuffle(pile)
+        decks_previous = []
+        for j in range(constants.DECK_PER_PILE):
+            cards = []
+            for k in range(constants.CARD_PER_DECK):
+                new_card = pile.pop()
+                cards.append(new_card)
+            self.joker_value_strategy.apply(cards)
+            self.joker_position_strategy.apply(cards)
+            decks_previous.append(tuple(cards))
+        decks_previous.sort(key=lambda x: x[0].value)
+        decks = []
+        for index, cards in enumerate(decks_previous):
+            deck = Deck(cards, index=index)
+            deck.delegate().open_up()
+            decks.append(deck)
+        self.decks = tuple(decks)
 
     @abc.abstractmethod
     def decide_offense_deck(self, decks_opponent, num_victory_opponent,
@@ -1060,11 +1076,10 @@ class HumanPlayer(Player):
     def __init__(self, prompt, forbidden_name=None):
         super().__init__()
         self.name = NameTextInput.from_human(prompt, forbidden_name).value
-
-    def set_keys(self, blacklist=None):
-        key_settings_input = KeySettingsTextInput.from_human(self.name,
-                                                             blacklist)
-        self.key_settings = key_settings_input.value
+        self.joker_value_strategy = JokerValueStrategyTextInput.from_human(
+            self.name).value
+        self.joker_position_strategy = JokerPositionStrategyTextInput.from_human(
+            self.name).value
 
     def decide_offense_deck(self, decks_opponent, num_victory_opponent,
                             num_shout_die_opponent):
@@ -1104,21 +1119,20 @@ class HumanPlayer(Player):
 
 
 class ComputerPlayer(Player):
-    def __init__(self, forbidden_name=None,
-                 offense_deck_index_strategy=BiggestOffenseDeck,
-                 defense_deck_index_strategy=SmallestDefenseDeck,
-                 action_choice_strategy=SimpleActionChoiceStrategy):
+    def __init__(self, forbidden_name=None):
         super().__init__()
-        self.name = NameTextInput.auto_generate(forbidden_name).value
-        self.offense_deck_index_strategy = offense_deck_index_strategy
-        self.defense_deck_index_strategy = defense_deck_index_strategy
-        self.action_choice_strategy = action_choice_strategy
-
-    def set_keys(self, blacklist=None):
-        if self.alias == constants.PLAYER_RED:
-            self.key_settings = KeySettingsInput.bottom_left()
-        else:
-            self.key_settings = KeySettingsInput.top_right()
+        if self.name is None:
+            self.name = NameTextInput.auto_generate(forbidden_name).value
+        if self.joker_value_strategy is None:
+            self.joker_value_strategy = RandomNumber
+        if self.joker_position_strategy is None:
+            self.joker_position_strategy = JokerAnywhere
+        if self.offense_deck_index_strategy is None:
+            self.offense_deck_index_strategy = AnyOffenseDeck
+        if self.defense_deck_index_strategy is None:
+            self.defense_deck_index_strategy = AnyDefenseDeck
+        if self.action_choice_strategy is None:
+            self.action_choice_strategy = SimpleActionChoiceStrategy
 
     def decide_offense_deck(self, decks_opponent, num_victory_opponent,
                             num_shout_die_opponent):
@@ -1723,13 +1737,8 @@ def main():
     if not run_in_batch:
         output_handler.display(message=message, duration=duration)
 
-    # player_red, player_black = RandomPlayerOrder(player1, player2).players
-    player_red, player_black = player1, player2
-
-    red_pile = RedPile()
-    player_red.take_pile(red_pile)
-    black_pile = BlackPile()
-    player_black.take_pile(black_pile)
+    player_red, player_black = RandomPlayerOrder(player1, player2).players
+    # player_red, player_black = player1, player2
 
     message = '{}, you are the Player Red, so you will go first.'.format(
         player_red.name)
@@ -1738,39 +1747,14 @@ def main():
     if not run_in_batch:
         output_handler.display(message=message, duration=duration)
 
-    ### key settings
-    player_red.key_settings = KeySettingsInput.bottom_left()
-    # player_red.key_settings = KeySettingsTextInput.from_human(player_red.name).value()
-    player_black.key_settings = KeySettingsInput.top_right()
-    # blacklist = list(player_red.key_settings.values())
-    # player_black.key_settings = KeySettingsTextInput.from_human(player_black.name, blacklist).value()
-
-    ### joker value strategy
-    # player_red.joker_value_strategy = JokerValueStrategyTextInput.from_human(player_red.name).value()
-    player_red.joker_value_strategy = SameAsMax
-    # player_black.joker_value_strategy = JokerValueStrategyTextInput.from_human(player_black.name).value()
-    player_black.joker_value_strategy = SameAsMax
-
-    ### delegate strategy
-    # player_red.joker_position_strategy = JokerPositionStrategyTextInput.from_human(player_red.name).value()
-    player_red.joker_position_strategy = JokerLast
-    # player_black.joker_position_strategy = JokerPositionStrategyTextInput.from_human(player_black.name).value()
-    player_black.joker_position_strategy = JokerLast
-
-    # initialize decks
-    player_red.decks = DeckRandomizer(player_red.pile,
-                                      player_red.joker_value_strategy,
-                                      player_red.joker_position_strategy).pop()
-    player_black.decks = DeckRandomizer(player_black.pile,
-                                        player_black.joker_value_strategy,
-                                        player_black.joker_position_strategy).pop()
+    game = Game(player_red, player_black)
+    game.distribute_piles()
+    game.build_decks()
 
     message = "Let's start DieOrDare!\nHere we go!"
     duration = constants.Duration.BEFORE_GAME_START
     if not run_in_batch:
         output_handler.display(message=message, duration=duration)
-
-    game = Game(player_red, player_black)
 
     while not game.is_over():
         duel = game.to_next_duel()
