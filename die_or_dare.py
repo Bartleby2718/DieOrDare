@@ -55,10 +55,10 @@ class NameTextInput(NameInput):
         name = input(prompt)
         while not name.isalnum() or name == forbidden_name:
             if name == forbidden_name:
-                print("You can't use that name. Choose another name.")
+                error_message = "You can't use that name. Choose another name."
             else:
-                print('Only alphanumeric characters are allowed.')
-            name = input(prompt)
+                error_message = 'Only alphanumeric characters are allowed.'
+            name = input(error_message + '\n' + prompt)
         return cls(name)
 
     @classmethod
@@ -110,7 +110,6 @@ class KeySettingsTextInput(KeySettingsInput):
         key_settings = {action: '' for action in constants.Action}
         if blacklist is None:
             blacklist = []
-        print('\n{}, decide the set of keys you will use.'.format(player_name))
         for action in key_settings:
             prompt = '{}, which key will you use to indicate {}? '.format(
                 player_name, action.name)
@@ -121,13 +120,13 @@ class KeySettingsTextInput(KeySettingsInput):
             is_valid_key = is_single and is_lower and is_not_duplicate
             while not is_valid_key:
                 if key in blacklist:
-                    print("You can't use the following key(s): {}".format(
-                        ', '.join(blacklist)))
+                    error_message = "You can't use the following key(s): {}".format(
+                        ', '.join(blacklist))
                 else:
-                    print('Use a single lowercase alphabet.')
+                    error_message = 'Use a single lowercase alphabet.'
                 prompt = '{}, which key will you use to indicate {}? '.format(
                     player_name, action.name)
-                key = input(prompt)
+                key = input(error_message + '\n' + prompt)
                 is_single = len(key) == 1
                 is_lower = key.islower()
                 is_not_duplicate = key not in blacklist
@@ -147,6 +146,7 @@ class JokerValueStrategy(abc.ABC):
 class Thirteen(JokerValueStrategy):
     @staticmethod
     def apply(cards):
+        """Assign 13."""
         for card in cards:
             if card.is_joker():
                 card.value = max(constants.Rank.value)
@@ -156,6 +156,7 @@ class Thirteen(JokerValueStrategy):
 class SameAsMax(JokerValueStrategy):
     @staticmethod
     def apply(cards):
+        """Assign the biggest value that is already in the deck."""
         if any(card.is_joker() for card in cards):
             joker = next(card for card in cards if card.is_joker())
             cards_without_joker = [card for card in cards if card != joker]
@@ -166,6 +167,7 @@ class SameAsMax(JokerValueStrategy):
 class RandomNumber(JokerValueStrategy):
     @staticmethod
     def apply(cards):
+        """Assign a random number."""
         for card in cards:
             if card.is_joker():
                 values = [rank.value for rank in constants.Rank]
@@ -176,6 +178,7 @@ class RandomNumber(JokerValueStrategy):
 class NextBiggest(JokerValueStrategy):
     @staticmethod
     def apply(cards):
+        """Assign the next biggest value that is not yet in the deck."""
         if any(card.is_joker() for card in cards):
             joker = next(card for card in cards if card.is_joker())
             cards_without_joker = [card for card in cards if card != joker]
@@ -202,6 +205,7 @@ class JokerPositionStrategy(abc.ABC):
 class JokerFirst(JokerPositionStrategy):
     @staticmethod
     def apply(cards):
+        """Make the joker a delegate to reveal it as soon as possible."""
         biggest = max(cards, key=lambda x: x.value)
         biggest_index = cards.index(biggest)
         cards[0], cards[biggest_index] = cards[biggest_index], cards[0]
@@ -223,6 +227,7 @@ class JokerFirst(JokerPositionStrategy):
 class JokerLast(JokerPositionStrategy):
     @staticmethod
     def apply(cards):
+        """Put the joker in the last position to hide it as long as possible."""
         biggest = max(cards, key=lambda x: x.value)
         biggest_index = cards.index(biggest)
         cards[0], cards[biggest_index] = cards[biggest_index], cards[0]
@@ -247,6 +252,7 @@ class JokerLast(JokerPositionStrategy):
 class JokerAnywhere(JokerPositionStrategy):
     @staticmethod
     def apply(cards):
+        """Put the joker anywhere within the deck."""
         biggest = max(cards, key=lambda x: x.value)  # may or may not be a joker
         biggest_index = cards.index(biggest)
         cards[0], cards[biggest_index] = cards[biggest_index], cards[0]
@@ -275,24 +281,23 @@ class JokerValueStrategyTextInput(JokerValueStrategyInput):
                               4: NextBiggest}
         valid_input = False
         input_value = None
+        error_message = ''
+        prompt = '\n{}, what value would you assign to your joker?'.format(
+            player_name)
+        prompt += ''.join('\n{}: {}'.format(number, strategy.apply.__doc__) for
+                          number, strategy in number_to_strategy.items())
+        prompt += '\nEnter a corresponding number: '
         while not valid_input:
-            print(
-                '\n{}, enter the number corresponding to the strategy you want.'.format(
-                    player_name))
-            print('Press 1 to set the value of Joker to 13.')
-            print(
-                'Press 2 to set the value of Joker to be equal to the biggest value in the deck.')
-            print('Press 3 to set the value of Joker to be a random number.')
-            print(
-                'Press 4 to set the value of Joker to be the biggest value that is not in the deck.')
-            prompt = 'What is your choice? '
-            input_value = input(prompt)
+            input_value = input(error_message + '\n' + prompt)
             try:
                 input_value = int(input_value)
                 if input_value not in number_to_strategy:
                     raise ValueError('Input not among choices.')
             except ValueError:
-                print('Invalid input.')
+                numbers = (str(number) for number in number_to_strategy)
+                numbers_concatenated = ', '.join(numbers)
+                error_message = 'Enter a number among {}.'.format(
+                    numbers_concatenated)
             else:
                 valid_input = True
         strategy = number_to_strategy.get(input_value)
@@ -321,21 +326,22 @@ class JokerPositionStrategyTextInput(JokerPositionStrategyInput):
         number_to_strategy = {1: JokerFirst, 2: JokerLast, 3: JokerAnywhere}
         valid_input = False
         input_value = None
+        error_message = ''
+        prompt = '\n{}, where in the deck would you put the joker?'.format(
+            player_name)
+        prompt += ''.join('\n{}: {}'.format(number, strategy.apply.__doc__) for
+                          number, strategy in number_to_strategy.items())
+        prompt += '\nEnter a corresponding number: '
         while not valid_input:
-            print(
-                '\n{}, enter the number corresponding to the strategy you want.'.format(
-                    player_name))
-            print('Enter 1 to reveal the joker as soon as possible.')
-            print('Enter 2 to hide the joker as long as possible.')
-            print('Enter 3 to put joker anywhere.')
-            prompt = 'What is your choice? '
-            input_value = input(prompt)
+            input_value = input(error_message + prompt)
             try:
                 input_value = int(input_value)
                 if input_value not in number_to_strategy:
                     raise ValueError('Input not among choices.')
             except ValueError:
-                print('Invalid input.')
+                numbers = (str(number) for number in number_to_strategy)
+                choices_str = ', '.join(numbers)
+                error_message = 'Enter a number among {}.\n'.format(choices_str)
             else:
                 valid_input = True
         strategy = number_to_strategy.get(input_value)
@@ -482,8 +488,7 @@ class DeckTextInput(DeckInput):
                 choices_generator = (str(deck.index + 1) for deck in
                                      undisclosed_decks)
                 choices_str = ', '.join(choices_generator)
-                error_message = 'Enter a number among {}.\n'.format(
-                    choices_str)
+                error_message = 'Enter a number among {}.\n'.format(choices_str)
                 prompt = error_message + prompt
             else:
                 valid_input = True
