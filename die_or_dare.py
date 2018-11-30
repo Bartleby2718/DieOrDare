@@ -51,7 +51,7 @@ class NameInput(Input):
 
 class NameTextInput(NameInput):
     @classmethod
-    def from_human(cls, prompt, forbidden_name=''):
+    def from_human(cls, prompt, forbidden_name=None):
         name = input(prompt)
         while not name.isalnum() or name == forbidden_name:
             if name == forbidden_name:
@@ -942,7 +942,7 @@ class DeckRandomizer(object):
 
 
 class Player(object):
-    def __init__(self, name='', deck_in_duel_index=None, num_victory=0,
+    def __init__(self, name=None, deck_in_duel_index=None, num_victory=0,
                  num_shout_die=0, num_shout_done=0, num_shout_draw=0,
                  decks=None, pile=None, key_settings=None,
                  alias=None, recent_action=None):
@@ -1057,7 +1057,7 @@ class Player(object):
 
 
 class HumanPlayer(Player):
-    def __init__(self, prompt, forbidden_name=''):
+    def __init__(self, prompt, forbidden_name=None):
         super().__init__()
         self.name = NameTextInput.from_human(prompt, forbidden_name).value
 
@@ -1104,7 +1104,7 @@ class HumanPlayer(Player):
 
 
 class ComputerPlayer(Player):
-    def __init__(self, forbidden_name='',
+    def __init__(self, forbidden_name=None,
                  offense_deck_index_strategy=BiggestOffenseDeck,
                  defense_deck_index_strategy=SmallestDefenseDeck,
                  action_choice_strategy=SimpleActionChoiceStrategy):
