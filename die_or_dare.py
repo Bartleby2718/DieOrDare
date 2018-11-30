@@ -1274,11 +1274,8 @@ class Card(object):
 
     def __repr__(self):
         if self.is_open():
-            if self.suit is None:
-                suit_symbol = '★' if self.colored else '☆'
-            else:
-                suit_symbol = self.suit.name[0]
-            return '{} {}'.format(self.value, suit_symbol)
+            suit_initial = 'J' if self.suit is None else self.suit.name[0]
+            return '{} {}'.format(self.value, suit_initial)
         else:
             return '?'
 
