@@ -205,7 +205,7 @@ class JokerPositionStrategy(abc.ABC):
 class JokerFirst(JokerPositionStrategy):
     @staticmethod
     def apply(cards):
-        """Make the joker a delegate to reveal it as soon as possible."""
+        """Reveal the joker as soon as possible."""
         biggest = max(cards, key=lambda x: x.value)
         biggest_index = cards.index(biggest)
         cards[0], cards[biggest_index] = cards[biggest_index], cards[0]
@@ -227,7 +227,7 @@ class JokerFirst(JokerPositionStrategy):
 class JokerLast(JokerPositionStrategy):
     @staticmethod
     def apply(cards):
-        """Put the joker in the last position to hide it as long as possible."""
+        """Hide the joker as long as possible."""
         biggest = max(cards, key=lambda x: x.value)
         biggest_index = cards.index(biggest)
         cards[0], cards[biggest_index] = cards[biggest_index], cards[0]
