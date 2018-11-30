@@ -1,4 +1,5 @@
 import abc
+import argparse
 import constants
 import datetime
 import functools
@@ -9,7 +10,6 @@ import keyboard
 import numpy
 import os
 import random
-import sys
 import time
 
 
@@ -639,11 +639,6 @@ class Game(object):
         self.duel_ongoing = None
         self.red_pile = RedPile().cards
         self.black_pile = BlackPile().cards
-        num_computers = len(args)
-        if num_computers in range(3):
-            self._num_human_players = 2 - num_computers
-        else:
-            raise ValueError('Invalid number of computer players.')
 
     @property
     def players(self):
@@ -668,10 +663,7 @@ class Game(object):
 
     def prepare(self):
         duel = self.duel_ongoing
-        if self._num_human_players == 2:
-            action_prompt = 'What will you two do?'
-        else:
-            action_prompt = 'What will you do?\nEnter your action!'
+        action_prompt = 'What will you two do?\nEnter your action!'
         if duel.offense.deck_in_duel is None:
             message = 'Duel #{} started! Time to choose the offense deck.'.format(
                 duel.index + 1)
@@ -1499,46 +1491,6 @@ class Duel(object):
             player.recent_action = None
 
 
-class PlayersSetup(object):
-    def __init__(self, num_human_players):
-        self.num_human_players = num_human_players
-
-    def run(self):
-        if self.num_human_players == 0:
-            class1_name = sys.argv[1]
-            class1 = globals().get(class1_name)
-            is_subclass = issubclass(class1, ComputerPlayer)
-            if not is_subclass or class1 == ComputerPlayer:
-                raise ValueError('Invalid class name for computer player.')
-            player1 = class1()
-            class2_name = sys.argv[2]
-            class2 = globals().get(class2_name)
-            is_subclass = issubclass(class2, ComputerPlayer)
-            if not is_subclass or class2 == ComputerPlayer:
-                raise ValueError('Invalid class name for computer player.')
-            forbidden_name = player1.name
-            player2 = class2(forbidden_name)
-        elif self.num_human_players == 1:
-            class1_name = sys.argv[1]
-            class1 = globals().get(class1_name)
-            is_subclass = issubclass(class1, ComputerPlayer)
-            if not is_subclass or class1 == ComputerPlayer:
-                raise ValueError('Invalid class name for computer player.')
-            player1 = class1()
-            human_player1_prompt = 'Player 1, enter your name: '
-            forbidden_name = player1.name
-            player2 = HumanPlayer(human_player1_prompt, forbidden_name)
-        elif self.num_human_players == 2:
-            human_player1_prompt = 'Player 1, enter your name: '
-            player1 = HumanPlayer(human_player1_prompt)
-            human_player2_prompt = 'Player 2, enter your name: '
-            forbidden_name = player1.name
-            player2 = HumanPlayer(human_player2_prompt, forbidden_name)
-        else:
-            raise ValueError('Invalid number of human players.')
-        return player1, player2
-
-
 class Pile(object):
     pass
 
@@ -1579,10 +1531,6 @@ class OutputHandler(object):
     def __init__(self):
         self.states = []
         self.messages = []
-
-    def save_and_display(self, game_state_in_json, message, duration):
-        self.save(game_state_in_json, message)
-        self.display(game_state_in_json, message, duration)
 
     def save(self, game_state_in_json, message):
         self.states.append(game_state_in_json)
@@ -1717,68 +1665,82 @@ class OutputHandler(object):
             self.states = jsonpickle.decode(content)
 
 
-def main():
+def main(num_human_players=1, suppress_output=False, save_all=False,
+         save_result=False):
     output_handler = OutputHandler()
 
-    ### player initialization
-    # player1 = ComputerPlayer()
-    player1 = HumanPlayer('Player 1, enter your name: ')
-    player2 = ComputerPlayer(player1.name)
-    # player2 = HumanPlayer('Player 2, enter your name: ', player1.name)
-    # num_human_players = 2 - len(sys.argv[1:])
-    # player1, player2 = PlayersSetup(num_human_players).run()
+    if num_human_players == 2:
+        player1 = HumanPlayer('Player 1, enter your name: ')
+        player2 = HumanPlayer('Player 2, enter your name: ', player1.name)
+    elif num_human_players == 1:
+        player1 = HumanPlayer('Player 1, enter your name: ')
+        player2 = ComputerPlayer(player1.name)
+    elif num_human_players == 0:
+        player1 = ComputerPlayer()
+        player2 = ComputerPlayer(player1.name)
+    else:
+        raise Exception('Invalid number of human players')
 
-    ### red/black decision
-    message = "All right, {} and {}. Let's get started!".format(player1.name,
-                                                                player2.name)
-    message += '\nLet\'s flip a coin to decide who will be the Player Red!'
-    duration = constants.Duration.BEFORE_COIN_TOSS
-    if not run_in_batch:
+    # red/black decision
+    if not suppress_output:
+        message = "All right, {} and {}. Let's get started!".format(
+            player1.name, player2.name)
+        message += '\nLet\'s flip a coin to decide who will be the Player Red!'
+        duration = constants.Duration.BEFORE_COIN_TOSS
         output_handler.display(message=message, duration=duration)
 
     player_red, player_black = RandomPlayerOrder(player1, player2).players
     # player_red, player_black = player1, player2
 
-    message = '{}, you are the Player Red, so you will go first.'.format(
-        player_red.name)
-    message += '\n{}, you are the Player Black.'.format(player_black.name)
-    duration = constants.Duration.AFTER_COIN_TOSS
-    if not run_in_batch:
+    if not suppress_output:
+        message = '{}, you are the Player Red, so you will go first.'.format(
+            player_red.name)
+        message += '\n{}, you are the Player Black.'.format(player_black.name)
+        duration = constants.Duration.AFTER_COIN_TOSS
         output_handler.display(message=message, duration=duration)
 
     game = Game(player_red, player_black)
     game.distribute_piles()
     game.build_decks()
 
-    message = "Let's start DieOrDare!\nHere we go!"
-    duration = constants.Duration.BEFORE_GAME_START
-    if not run_in_batch:
+    if not suppress_output:
+        message = "Let's start DieOrDare!\nHere we go!"
+        duration = constants.Duration.BEFORE_GAME_START
         output_handler.display(message=message, duration=duration)
 
     while not game.is_over():
         duel = game.to_next_duel()
         while not duel.is_over():
             message, duration = game.prepare()
-            if run_in_batch:
+            if save_all or save_result:
                 output_handler.save(game.to_json(), message)
-            else:
-                output_handler.save_and_display(game.to_json(), message,
-                                                duration)
+            output_handler.display(game.to_json(), message, duration)
             user_input = game.accept()
             message, duration = game.process(user_input)
-            if run_in_batch:
+            if save_all or save_result:
                 output_handler.save(game.to_json(), message)
-            else:
-                output_handler.save_and_display(game.to_json(), message,
-                                                duration)
-    output_handler.export_game_states(final_state_only=True)
+            output_handler.display(game.to_json(), message, duration)
+    if save_all:
+        output_handler.export_game_states(final_state_only=False)
+    elif save_result:
+        output_handler.export_game_states(final_state_only=True)
 
 
 if __name__ == '__main__':
-    run_in_batch = False
-    if run_in_batch:
-        for i in range(50):
-            print(i + 1)
-            main()
-    else:
-        main()
+    parser = argparse.ArgumentParser(description='Enjoy my game!')
+    parser.add_argument('--humans', help='number of human players',
+                        type=int, choices=[0, 1, 2], default=1)
+    parser.add_argument('-q', '--quiet', help='suppress command-line output',
+                        action='store_true')
+    parser.add_argument('-r', '--repeat', help='number of games to play',
+                        type=int, default=1)  # silently ignores negative inputs
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--save-all', action='store_true',
+                       help='save all command-line output to a JSON file')
+    group.add_argument('--save-result-only', action='store_true',
+                       help='save only the result to a JSON file')
+    args = parser.parse_args()
+    for trial_index in range(args.repeat):
+        if args.repeat > 1:
+            print('Game #{}'.format(trial_index + 1))
+        main(args.humans, args.quiet, args.save_all, args.save_result_only)
