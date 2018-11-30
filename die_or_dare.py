@@ -149,7 +149,7 @@ class Thirteen(JokerValueStrategy):
         """Assign 13."""
         for card in cards:
             if card.is_joker():
-                card.value = max(constants.Rank.value)
+                card.value = max(rank.value for rank in constants.Rank)
                 break
 
 
