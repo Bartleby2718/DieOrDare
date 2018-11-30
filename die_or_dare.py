@@ -359,6 +359,14 @@ class BiggestOffenseDeck(OffenseDeckChoiceStrategy):
         return max(undisclosed_decks_me, key=lambda x: x.index)
 
 
+class AnyOffenseDeck(OffenseDeckChoiceStrategy):
+    @staticmethod
+    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
+              num_victory_opponent, num_shout_die_opponent):
+        undisclosed_decks = [deck for deck in decks_me if deck.is_undisclosed()]
+        return random.choice(undisclosed_decks)
+
+
 class DefenseDeckChoiceStrategy(abc.ABC):
     @staticmethod
     @abc.abstractmethod
@@ -374,6 +382,15 @@ class SmallestDefenseDeck(DefenseDeckChoiceStrategy):
         undisclosed_decks_opponent = [deck for deck in decks_opponent if
                                       deck.is_undisclosed()]
         return min(undisclosed_decks_opponent, key=lambda x: x.index)
+
+
+class AnyDefenseDeck(DefenseDeckChoiceStrategy):
+    @staticmethod
+    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
+              num_victory_opponent, num_shout_die_opponent, offense_deck=None):
+        undisclosed_decks = [deck for deck in decks_opponent if
+                             deck.is_undisclosed()]
+        return random.choice(undisclosed_decks)
 
 
 class ActionChoiceStrategy(abc.ABC):
