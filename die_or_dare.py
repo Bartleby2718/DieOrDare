@@ -1739,8 +1739,9 @@ if __name__ == '__main__':
                        help='save all command-line output to a JSON file')
     group.add_argument('--save-result-only', action='store_true',
                        help='save only the result to a JSON file')
-    args = parser.parse_args()
-    for trial_index in range(args.repeat):
-        if args.repeat > 1:
+    arguments = parser.parse_args()
+    for trial_index in range(arguments.repeat):
+        if arguments.repeat > 1:
             print('Game #{}'.format(trial_index + 1))
-        main(args.humans, args.quiet, args.save_all, args.save_result_only)
+        main(arguments.humans, arguments.quiet, arguments.save_all,
+             arguments.save_result_only)
