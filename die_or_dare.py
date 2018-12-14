@@ -1279,9 +1279,20 @@ class Card(object):
         return same_suit and same_color and same_rank
 
     def __repr__(self):
+        if self.is_joker():
+            colored = 'Colored' if self.colored else 'Black'
+            rank = self.rank
+            representation = '{} {}'.format(colored, rank)
+        else:
+            representation = '{} of {}'.format(self.rank, self.suit.name)
+        if not self._open:
+            representation = '({})'.format(representation)
+        return representation
+
+    def __str__(self):
         if self.is_open():
-            suit_initial = 'J' if self.is_joker() is None else self.suit.name[0]
-            return '{} {}'.format(self.value, suit_initial)
+            initial = 'J' if self.is_joker() else self.suit.name[0]
+            return '{} {}'.format(self.value, initial)
         else:
             return '?'
 
@@ -1323,8 +1334,8 @@ class Deck(object):
         self._opponent_deck_index = opponent_deck_index
         self.card_to_open_index = card_to_open_index
 
-    def __repr__(self):
-        return ' / '.join(repr(card) for card in self._cards)
+    def __str__(self):
+        return ' / '.join(str(card) for card in self._cards)
 
     def __getitem__(self, index):
         return self._cards[index]
@@ -1577,17 +1588,17 @@ class OutputHandler(object):
         red_number_line = row_format.format(*red_numbers)
         print(red_number_line)
         red_undisclosed_delegates = (
-            repr(deck[0]) if deck.is_undisclosed() else '' for deck in
+            str(deck[0]) if deck.is_undisclosed() else '' for deck in
             red_decks)
         print(row_format.format(*red_undisclosed_delegates))
         red_opened_delegates = (
-            '' if deck.is_undisclosed() else repr(deck[0]) for deck in
+            '' if deck.is_undisclosed() else str(deck[0]) for deck in
             red_decks)
         print(row_format.format(*red_opened_delegates))
-        red_seconds = ('' if deck.is_undisclosed() else repr(deck[1]) for
+        red_seconds = ('' if deck.is_undisclosed() else str(deck[1]) for
                        deck in red_decks)
         print(row_format.format(*red_seconds))
-        red_lasts = ('' if deck.is_undisclosed() else repr(deck[2]) for
+        red_lasts = ('' if deck.is_undisclosed() else str(deck[2]) for
                      deck in red_decks)
         print(row_format.format(*red_lasts))
         print()
@@ -1595,18 +1606,18 @@ class OutputHandler(object):
             '' if duel is None else '[Duel #{}]'.format(duel.index + 1)))
         print()
         black_decks = game.player_black.decks
-        black_lasts = ('' if deck.is_undisclosed() else repr(deck[2]) for
+        black_lasts = ('' if deck.is_undisclosed() else str(deck[2]) for
                        deck in black_decks)
         print(row_format.format(*black_lasts))
-        black_seconds = ('' if deck.is_undisclosed() else repr(deck[1])
+        black_seconds = ('' if deck.is_undisclosed() else str(deck[1])
                          for deck in black_decks)
         print(row_format.format(*black_seconds))
         black_opened_delegates = (
-            '' if deck.is_undisclosed() else repr(deck[0]) for
+            '' if deck.is_undisclosed() else str(deck[0]) for
             deck in black_decks)
         print(row_format.format(*black_opened_delegates))
         black_undisclosed_delegate = (
-            repr(deck[0]) if deck.is_undisclosed() else '' for
+            str(deck[0]) if deck.is_undisclosed() else '' for
             deck in black_decks)
         print(row_format.format(*black_undisclosed_delegate))
         black_numbers = (
