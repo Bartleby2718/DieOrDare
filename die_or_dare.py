@@ -1268,7 +1268,7 @@ class Card(object):
 
     def __repr__(self):
         if self.is_open():
-            suit_initial = 'J' if self.suit is None else self.suit.name[0]
+            suit_initial = 'J' if self.is_joker() is None else self.suit.name[0]
             return '{} {}'.format(self.value, suit_initial)
         else:
             return '?'
@@ -1280,7 +1280,7 @@ class Card(object):
         return self._open
 
     def is_joker(self):
-        return self.suit is None
+        return self.rank == constants.JOKER
 
     def to_array(self):
         suit = -1 if self.suit is None else self.suit.value
