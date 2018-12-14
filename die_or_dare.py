@@ -270,6 +270,28 @@ class JokerAnywhere(JokerPositionStrategy):
         cls.biggest_to_delegate(cards)
 
 
+class JokerNotFirst(JokerPositionStrategy):
+    @classmethod
+    def apply(cls, cards):
+        """Put the joker anywhere but in the first position."""
+        joker_index = -1
+        for i in range(len(cards)):
+            card = cards[i]
+            if card.is_joker():
+                joker_index = i
+        if joker_index > -1:
+            joker = cards[joker_index]
+            cards_without_joker = [card for card in cards if card != joker]
+            bigger = cls.biggest(cards_without_joker)
+            if joker.value > bigger.value:
+                cls.to_delegate(cards, joker_index)
+            else:
+                bigger_index = cards.index(bigger)
+                cls.to_delegate(cards, bigger_index)
+        else:
+            cls.biggest_to_delegate(cards)
+
+
 class JokerValueStrategyInput(Input):
     def __init__(self, strategy=None):
         self._strategy = strategy
@@ -335,7 +357,8 @@ class JokerPositionStrategyInput(Input):
 class JokerPositionStrategyTextInput(JokerPositionStrategyInput):
     @classmethod
     def from_human(cls, player_name):
-        number_to_strategy = {1: JokerFirst, 2: JokerLast, 3: JokerAnywhere}
+        number_to_strategy = {1: JokerFirst, 2: JokerLast, 3: JokerAnywhere,
+                              4: JokerNotFirst}
         valid_input = False
         input_value = None
         error_message = ''
