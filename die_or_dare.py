@@ -434,6 +434,19 @@ class AnyDefenseDeck(DefenseDeckChoiceStrategy):
         return random.choice(undisclosed_decks)
 
 
+class StatsConsideredBiggest(DefenseDeckChoiceStrategy):
+    @staticmethod
+    def apply(decks_me, decks_opponent=None, num_victory_me=None,
+              num_shout_die_me=None, num_victory_opponent=None,
+              num_shout_die_opponent=None, offense_deck=None):
+        undisclosed_decks = [deck for deck in decks_opponent if
+                             deck.is_undisclosed()]
+        remaining_die_opponent = constants.MAX_DIE - num_shout_die_opponent
+        remaining_win_me = constants.REQUIRED_WIN - num_victory_me
+        index = remaining_die_opponent + remaining_win_me - 1
+        return undisclosed_decks[index]
+
+
 class ActionChoiceStrategy(abc.ABC):
     @staticmethod
     @abc.abstractmethod
