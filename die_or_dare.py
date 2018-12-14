@@ -934,7 +934,7 @@ class Player(object):
                  decks=None, pile=None, key_settings=None, alias=None,
                  recent_action=None, joker_value_strategy=None,
                  joker_position_strategy=None, offense_deck_index_strategy=None,
-                 defense_deck_index_strategy=None, action_choice_strategy=None):
+                 defense_deck_index_strategy=None, action_choice_strategy=None, *args, **kwargs):
         self.name = name
         self._deck_in_duel_index = deck_in_duel_index
         self.deck_in_duel = None
@@ -1066,8 +1066,8 @@ class Player(object):
 
 
 class HumanPlayer(Player):
-    def __init__(self, prompt, forbidden_name=None):
-        super().__init__()
+    def __init__(self, prompt, forbidden_name=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.name = NameTextInput.from_human(prompt, forbidden_name).value
         self.joker_value_strategy = JokerValueStrategyTextInput.from_human(
             self.name).value
@@ -1113,8 +1113,8 @@ class HumanPlayer(Player):
 
 
 class ComputerPlayer(Player):
-    def __init__(self, forbidden_name=None):
-        super().__init__()
+    def __init__(self, forbidden_name=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         if self.name is None:
             self.name = NameTextInput.auto_generate(forbidden_name).value
         if self.joker_value_strategy is None:
