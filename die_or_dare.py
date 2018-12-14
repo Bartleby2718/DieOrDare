@@ -1263,8 +1263,8 @@ class Card(object):
     def __eq__(self, other):
         same_suit = self.suit == other.suit
         same_color = self.colored == other.colored
-        same_value = self.value == other.value
-        return same_suit and same_color and same_value
+        same_rank = self.rank == other.rank
+        return same_suit and same_color and same_rank
 
     def __repr__(self):
         if self.is_open():
