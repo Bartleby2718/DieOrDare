@@ -197,40 +197,53 @@ class NextBiggest(JokerValueStrategy):
 
 class JokerPositionStrategy(abc.ABC):
     @staticmethod
+    def biggest(cards):
+        """Return the card with the biggest value"""
+        return max(cards, key=lambda x: x.value)  # may or may not be a joker
+
+    @staticmethod
+    def to_delegate(cards, index):
+        cards[0], cards[index] = cards[index], cards[0]
+
+    @classmethod
+    def biggest_to_delegate(cls, cards):
+        biggest = cls.biggest(cards)
+        biggest_index = cards.index(biggest)
+        cls.to_delegate(cards, biggest_index)
+
+    @classmethod
     @abc.abstractmethod
-    def apply(cards):
+    def apply(cls, cards):
         pass
 
 
 class JokerFirst(JokerPositionStrategy):
-    @staticmethod
-    def apply(cards):
+    @classmethod
+    def apply(cls, cards):
         """Reveal the joker as soon as possible."""
-        biggest = max(cards, key=lambda x: x.value)
-        biggest_index = cards.index(biggest)
-        cards[0], cards[biggest_index] = cards[biggest_index], cards[0]
         joker_index = -1
         for i in range(len(cards)):
-            if cards[i].is_joker():
+            card = cards[i]
+            if card.is_joker():
                 joker_index = i
         if joker_index > -1:
             joker = cards[joker_index]
             cards_without_joker = [card for card in cards if
                                    not card.is_joker()]
-            non_joker_bigger = max(cards_without_joker, key=lambda x: x.value)
-            if joker.value == non_joker_bigger.value:
-                cards[0], cards[joker_index] = cards[joker_index], cards[0]
-            elif joker.value < non_joker_bigger.value:
-                cards[1], cards[joker_index] = cards[joker_index], cards[1]
+            bigger = cls.biggest(cards_without_joker)
+            bigger_index = cards.index(bigger)
+            if joker.value >= bigger.value:
+                cls.to_delegate(cards, joker_index)
+            else:
+                cls.to_delegate(cards, bigger_index)
+        else:
+            cls.biggest_to_delegate(cards)
 
 
 class JokerLast(JokerPositionStrategy):
-    @staticmethod
-    def apply(cards):
+    @classmethod
+    def apply(cls, cards):
         """Hide the joker as long as possible."""
-        biggest = max(cards, key=lambda x: x.value)
-        biggest_index = cards.index(biggest)
-        cards[0], cards[biggest_index] = cards[biggest_index], cards[0]
         joker_index = -1
         for i in range(len(cards)):
             if cards[i].is_joker():
@@ -239,23 +252,22 @@ class JokerLast(JokerPositionStrategy):
             joker = cards[joker_index]
             cards_without_joker = [card for card in cards if
                                    not card.is_joker()]
-            bigger = max(cards_without_joker, key=lambda x: x.value)
-            bigger_index = cards.index(bigger)
-            if joker.value <= bigger.value:
-                cards[0], cards[bigger_index] = cards[bigger_index], cards[0]
-            for i in range(len(cards)):
-                if cards[i].is_joker():
-                    joker_index = i
-            cards[-1], cards[joker_index] = cards[joker_index], cards[-1]
+            bigger = cls.biggest(cards_without_joker)
+            if joker.value > bigger.value:
+                cls.to_delegate(cards, joker_index)
+            else:
+                bigger_index = cards.index(bigger)
+                cls.to_delegate(cards, bigger_index)
+                cards[-1], cards[joker_index] = cards[joker_index], cards[-1]
+        else:
+            cls.biggest_to_delegate(cards)
 
 
 class JokerAnywhere(JokerPositionStrategy):
-    @staticmethod
-    def apply(cards):
+    @classmethod
+    def apply(cls, cards):
         """Put the joker anywhere within the deck."""
-        biggest = max(cards, key=lambda x: x.value)  # may or may not be a joker
-        biggest_index = cards.index(biggest)
-        cards[0], cards[biggest_index] = cards[biggest_index], cards[0]
+        cls.biggest_to_delegate(cards)
 
 
 class JokerValueStrategyInput(Input):
