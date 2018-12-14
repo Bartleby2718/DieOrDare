@@ -1004,7 +1004,7 @@ class Player(object):
         decks = []
         for index, cards in enumerate(decks_previous):
             deck = Deck(cards, index=index)
-            deck.delegate().open_up()
+            deck.delegate.open_up()
             decks.append(deck)
         self.decks = tuple(decks)
 
@@ -1170,7 +1170,7 @@ class ComputerPlayer(Player):
         current_sum_me = sum(
             card.value for card in deck_in_duel_me if card.is_open())
         num_to_open = 3 - num_opened
-        delegate_value_me = deck_in_duel_me.delegate().value
+        delegate_value_me = deck_in_duel_me.delegate.value
         hidden_cards_me = []
         for deck in decks_me:
             for card in deck:
@@ -1183,7 +1183,7 @@ class ComputerPlayer(Player):
         current_sum_opponent = sum(
             card.value for card in deck_in_duel_opponent if
             card.is_open())
-        delegate_value_opponent = deck_in_duel_opponent.delegate().value
+        delegate_value_opponent = deck_in_duel_opponent.delegate.value
         hidden_cards_opponent = []
         for deck in decks_opponent:
             for card in deck:
@@ -1325,6 +1325,7 @@ class Deck(object):
     def cards(self):
         return self._cards
 
+    @property
     def delegate(self):
         return self._cards[0]
 
