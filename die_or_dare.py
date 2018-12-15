@@ -197,40 +197,53 @@ class NextBiggest(JokerValueStrategy):
 
 class JokerPositionStrategy(abc.ABC):
     @staticmethod
+    def biggest(cards):
+        """Return the card with the biggest value"""
+        return max(cards, key=lambda x: x.value)  # may or may not be a joker
+
+    @staticmethod
+    def to_delegate(cards, index):
+        cards[0], cards[index] = cards[index], cards[0]
+
+    @classmethod
+    def biggest_to_delegate(cls, cards):
+        biggest = cls.biggest(cards)
+        biggest_index = cards.index(biggest)
+        cls.to_delegate(cards, biggest_index)
+
+    @classmethod
     @abc.abstractmethod
-    def apply(cards):
+    def apply(cls, cards):
         pass
 
 
 class JokerFirst(JokerPositionStrategy):
-    @staticmethod
-    def apply(cards):
+    @classmethod
+    def apply(cls, cards):
         """Reveal the joker as soon as possible."""
-        biggest = max(cards, key=lambda x: x.value)
-        biggest_index = cards.index(biggest)
-        cards[0], cards[biggest_index] = cards[biggest_index], cards[0]
         joker_index = -1
         for i in range(len(cards)):
-            if cards[i].is_joker():
+            card = cards[i]
+            if card.is_joker():
                 joker_index = i
         if joker_index > -1:
             joker = cards[joker_index]
             cards_without_joker = [card for card in cards if
                                    not card.is_joker()]
-            non_joker_bigger = max(cards_without_joker, key=lambda x: x.value)
-            if joker.value == non_joker_bigger.value:
-                cards[0], cards[joker_index] = cards[joker_index], cards[0]
-            elif joker.value < non_joker_bigger.value:
-                cards[1], cards[joker_index] = cards[joker_index], cards[1]
+            bigger = cls.biggest(cards_without_joker)
+            bigger_index = cards.index(bigger)
+            if joker.value >= bigger.value:
+                cls.to_delegate(cards, joker_index)
+            else:
+                cls.to_delegate(cards, bigger_index)
+        else:
+            cls.biggest_to_delegate(cards)
 
 
 class JokerLast(JokerPositionStrategy):
-    @staticmethod
-    def apply(cards):
+    @classmethod
+    def apply(cls, cards):
         """Hide the joker as long as possible."""
-        biggest = max(cards, key=lambda x: x.value)
-        biggest_index = cards.index(biggest)
-        cards[0], cards[biggest_index] = cards[biggest_index], cards[0]
         joker_index = -1
         for i in range(len(cards)):
             if cards[i].is_joker():
@@ -239,23 +252,44 @@ class JokerLast(JokerPositionStrategy):
             joker = cards[joker_index]
             cards_without_joker = [card for card in cards if
                                    not card.is_joker()]
-            bigger = max(cards_without_joker, key=lambda x: x.value)
-            bigger_index = cards.index(bigger)
-            if joker.value <= bigger.value:
-                cards[0], cards[bigger_index] = cards[bigger_index], cards[0]
-            for i in range(len(cards)):
-                if cards[i].is_joker():
-                    joker_index = i
-            cards[-1], cards[joker_index] = cards[joker_index], cards[-1]
+            bigger = cls.biggest(cards_without_joker)
+            if joker.value > bigger.value:
+                cls.to_delegate(cards, joker_index)
+            else:
+                bigger_index = cards.index(bigger)
+                cls.to_delegate(cards, bigger_index)
+                cards[-1], cards[joker_index] = cards[joker_index], cards[-1]
+        else:
+            cls.biggest_to_delegate(cards)
 
 
 class JokerAnywhere(JokerPositionStrategy):
-    @staticmethod
-    def apply(cards):
+    @classmethod
+    def apply(cls, cards):
         """Put the joker anywhere within the deck."""
-        biggest = max(cards, key=lambda x: x.value)  # may or may not be a joker
-        biggest_index = cards.index(biggest)
-        cards[0], cards[biggest_index] = cards[biggest_index], cards[0]
+        cls.biggest_to_delegate(cards)
+
+
+class JokerNotFirst(JokerPositionStrategy):
+    @classmethod
+    def apply(cls, cards):
+        """Put the joker anywhere but in the first position."""
+        joker_index = -1
+        for i in range(len(cards)):
+            card = cards[i]
+            if card.is_joker():
+                joker_index = i
+        if joker_index > -1:
+            joker = cards[joker_index]
+            cards_without_joker = [card for card in cards if card != joker]
+            bigger = cls.biggest(cards_without_joker)
+            if joker.value > bigger.value:
+                cls.to_delegate(cards, joker_index)
+            else:
+                bigger_index = cards.index(bigger)
+                cls.to_delegate(cards, bigger_index)
+        else:
+            cls.biggest_to_delegate(cards)
 
 
 class JokerValueStrategyInput(Input):
@@ -323,7 +357,8 @@ class JokerPositionStrategyInput(Input):
 class JokerPositionStrategyTextInput(JokerPositionStrategyInput):
     @classmethod
     def from_human(cls, player_name):
-        number_to_strategy = {1: JokerFirst, 2: JokerLast, 3: JokerAnywhere}
+        number_to_strategy = {1: JokerFirst, 2: JokerLast, 3: JokerAnywhere,
+                              4: JokerNotFirst}
         valid_input = False
         input_value = None
         error_message = ''
@@ -397,6 +432,19 @@ class AnyDefenseDeck(DefenseDeckChoiceStrategy):
         undisclosed_decks = [deck for deck in decks_opponent if
                              deck.is_undisclosed()]
         return random.choice(undisclosed_decks)
+
+
+class StatsConsideredBiggest(DefenseDeckChoiceStrategy):
+    @staticmethod
+    def apply(decks_me, decks_opponent=None, num_victory_me=None,
+              num_shout_die_me=None, num_victory_opponent=None,
+              num_shout_die_opponent=None, offense_deck=None):
+        undisclosed_decks = [deck for deck in decks_opponent if
+                             deck.is_undisclosed()]
+        remaining_die_opponent = constants.MAX_DIE - num_shout_die_opponent
+        remaining_win_me = constants.REQUIRED_WIN - num_victory_me
+        index = remaining_die_opponent + remaining_win_me - 1
+        return undisclosed_decks[index]
 
 
 class ActionChoiceStrategy(abc.ABC):
@@ -934,7 +982,7 @@ class Player(object):
                  decks=None, pile=None, key_settings=None, alias=None,
                  recent_action=None, joker_value_strategy=None,
                  joker_position_strategy=None, offense_deck_index_strategy=None,
-                 defense_deck_index_strategy=None, action_choice_strategy=None):
+                 defense_deck_index_strategy=None, action_choice_strategy=None, *args, **kwargs):
         self.name = name
         self._deck_in_duel_index = deck_in_duel_index
         self.deck_in_duel = None
@@ -1004,7 +1052,7 @@ class Player(object):
         decks = []
         for index, cards in enumerate(decks_previous):
             deck = Deck(cards, index=index)
-            deck.delegate().open_up()
+            deck.delegate.open_up()
             decks.append(deck)
         self.decks = tuple(decks)
 
@@ -1066,8 +1114,8 @@ class Player(object):
 
 
 class HumanPlayer(Player):
-    def __init__(self, prompt, forbidden_name=None):
-        super().__init__()
+    def __init__(self, prompt, forbidden_name=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.name = NameTextInput.from_human(prompt, forbidden_name).value
         self.joker_value_strategy = JokerValueStrategyTextInput.from_human(
             self.name).value
@@ -1113,8 +1161,8 @@ class HumanPlayer(Player):
 
 
 class ComputerPlayer(Player):
-    def __init__(self, forbidden_name=None):
-        super().__init__()
+    def __init__(self, forbidden_name=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         if self.name is None:
             self.name = NameTextInput.auto_generate(forbidden_name).value
         if self.joker_value_strategy is None:
@@ -1170,7 +1218,7 @@ class ComputerPlayer(Player):
         current_sum_me = sum(
             card.value for card in deck_in_duel_me if card.is_open())
         num_to_open = 3 - num_opened
-        delegate_value_me = deck_in_duel_me.delegate().value
+        delegate_value_me = deck_in_duel_me.delegate.value
         hidden_cards_me = []
         for deck in decks_me:
             for card in deck:
@@ -1183,7 +1231,7 @@ class ComputerPlayer(Player):
         current_sum_opponent = sum(
             card.value for card in deck_in_duel_opponent if
             card.is_open())
-        delegate_value_opponent = deck_in_duel_opponent.delegate().value
+        delegate_value_opponent = deck_in_duel_opponent.delegate.value
         hidden_cards_opponent = []
         for deck in decks_opponent:
             for card in deck:
@@ -1263,13 +1311,24 @@ class Card(object):
     def __eq__(self, other):
         same_suit = self.suit == other.suit
         same_color = self.colored == other.colored
-        same_value = self.value == other.value
-        return same_suit and same_color and same_value
+        same_rank = self.rank == other.rank
+        return same_suit and same_color and same_rank
 
     def __repr__(self):
+        if self.is_joker():
+            colored = 'Colored' if self.colored else 'Black'
+            rank = self.rank
+            representation = '{} {}'.format(colored, rank)
+        else:
+            representation = '{} of {}'.format(self.rank, self.suit.name)
+        if not self._open:
+            representation = '({})'.format(representation)
+        return representation
+
+    def __str__(self):
         if self.is_open():
-            suit_initial = 'J' if self.suit is None else self.suit.name[0]
-            return '{} {}'.format(self.value, suit_initial)
+            initial = 'J' if self.is_joker() else self.suit.name[0]
+            return '{} {}'.format(self.value, initial)
         else:
             return '?'
 
@@ -1280,7 +1339,7 @@ class Card(object):
         return self._open
 
     def is_joker(self):
-        return self.suit is None
+        return self.rank == constants.JOKER
 
     def to_array(self):
         suit = -1 if self.suit is None else self.suit.value
@@ -1311,8 +1370,8 @@ class Deck(object):
         self._opponent_deck_index = opponent_deck_index
         self.card_to_open_index = card_to_open_index
 
-    def __repr__(self):
-        return ' / '.join(repr(card) for card in self._cards)
+    def __str__(self):
+        return ' / '.join(str(card) for card in self._cards)
 
     def __getitem__(self, index):
         return self._cards[index]
@@ -1325,6 +1384,7 @@ class Deck(object):
     def cards(self):
         return self._cards
 
+    @property
     def delegate(self):
         return self._cards[0]
 
@@ -1564,17 +1624,17 @@ class OutputHandler(object):
         red_number_line = row_format.format(*red_numbers)
         print(red_number_line)
         red_undisclosed_delegates = (
-            repr(deck[0]) if deck.is_undisclosed() else '' for deck in
+            str(deck[0]) if deck.is_undisclosed() else '' for deck in
             red_decks)
         print(row_format.format(*red_undisclosed_delegates))
         red_opened_delegates = (
-            '' if deck.is_undisclosed() else repr(deck[0]) for deck in
+            '' if deck.is_undisclosed() else str(deck[0]) for deck in
             red_decks)
         print(row_format.format(*red_opened_delegates))
-        red_seconds = ('' if deck.is_undisclosed() else repr(deck[1]) for
+        red_seconds = ('' if deck.is_undisclosed() else str(deck[1]) for
                        deck in red_decks)
         print(row_format.format(*red_seconds))
-        red_lasts = ('' if deck.is_undisclosed() else repr(deck[2]) for
+        red_lasts = ('' if deck.is_undisclosed() else str(deck[2]) for
                      deck in red_decks)
         print(row_format.format(*red_lasts))
         print()
@@ -1582,18 +1642,18 @@ class OutputHandler(object):
             '' if duel is None else '[Duel #{}]'.format(duel.index + 1)))
         print()
         black_decks = game.player_black.decks
-        black_lasts = ('' if deck.is_undisclosed() else repr(deck[2]) for
+        black_lasts = ('' if deck.is_undisclosed() else str(deck[2]) for
                        deck in black_decks)
         print(row_format.format(*black_lasts))
-        black_seconds = ('' if deck.is_undisclosed() else repr(deck[1])
+        black_seconds = ('' if deck.is_undisclosed() else str(deck[1])
                          for deck in black_decks)
         print(row_format.format(*black_seconds))
         black_opened_delegates = (
-            '' if deck.is_undisclosed() else repr(deck[0]) for
+            '' if deck.is_undisclosed() else str(deck[0]) for
             deck in black_decks)
         print(row_format.format(*black_opened_delegates))
         black_undisclosed_delegate = (
-            repr(deck[0]) if deck.is_undisclosed() else '' for
+            str(deck[0]) if deck.is_undisclosed() else '' for
             deck in black_decks)
         print(row_format.format(*black_undisclosed_delegate))
         black_numbers = (
