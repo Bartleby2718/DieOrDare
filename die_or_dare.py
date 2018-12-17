@@ -386,15 +386,15 @@ class JokerPositionStrategyTextInput(JokerPositionStrategyInput):
 class OffenseDeckChoiceStrategy(abc.ABC):
     @staticmethod
     @abc.abstractmethod
-    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
-              num_victory_opponent, num_shout_die_opponent):
+    def apply(decks_me, decks_opponent, points_me, num_shout_die_me,
+              points_opponent, num_shout_die_opponent):
         pass
 
 
 class BiggestOffenseDeck(OffenseDeckChoiceStrategy):
     @staticmethod
-    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
-              num_victory_opponent, num_shout_die_opponent):
+    def apply(decks_me, decks_opponent, points_me, num_shout_die_me,
+              points_opponent, num_shout_die_opponent):
         undisclosed_decks_me = [deck for deck in decks_me if
                                 deck.is_undisclosed()]
         return max(undisclosed_decks_me, key=lambda x: x.index)
@@ -402,8 +402,8 @@ class BiggestOffenseDeck(OffenseDeckChoiceStrategy):
 
 class AnyOffenseDeck(OffenseDeckChoiceStrategy):
     @staticmethod
-    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
-              num_victory_opponent, num_shout_die_opponent):
+    def apply(decks_me, decks_opponent, points_me, num_shout_die_me,
+              points_opponent, num_shout_die_opponent):
         undisclosed_decks = [deck for deck in decks_me if deck.is_undisclosed()]
         return random.choice(undisclosed_decks)
 
@@ -411,15 +411,15 @@ class AnyOffenseDeck(OffenseDeckChoiceStrategy):
 class DefenseDeckChoiceStrategy(abc.ABC):
     @staticmethod
     @abc.abstractmethod
-    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
-              num_victory_opponent, num_shout_die_opponent, offense_deck=None):
+    def apply(decks_me, decks_opponent, points_me, num_shout_die_me,
+              points_opponent, num_shout_die_opponent, offense_deck=None):
         pass
 
 
 class SmallestDefenseDeck(DefenseDeckChoiceStrategy):
     @staticmethod
-    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
-              num_victory_opponent, num_shout_die_opponent, offense_deck=None):
+    def apply(decks_me, decks_opponent, points_me, num_shout_die_me,
+              points_opponent, num_shout_die_opponent, offense_deck=None):
         undisclosed_decks_opponent = [deck for deck in decks_opponent if
                                       deck.is_undisclosed()]
         return min(undisclosed_decks_opponent, key=lambda x: x.index)
@@ -427,8 +427,8 @@ class SmallestDefenseDeck(DefenseDeckChoiceStrategy):
 
 class AnyDefenseDeck(DefenseDeckChoiceStrategy):
     @staticmethod
-    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
-              num_victory_opponent, num_shout_die_opponent, offense_deck=None):
+    def apply(decks_me, decks_opponent, points_me, num_shout_die_me,
+              points_opponent, num_shout_die_opponent, offense_deck=None):
         undisclosed_decks = [deck for deck in decks_opponent if
                              deck.is_undisclosed()]
         return random.choice(undisclosed_decks)
@@ -436,29 +436,29 @@ class AnyDefenseDeck(DefenseDeckChoiceStrategy):
 
 class StatsConsideredBiggest(DefenseDeckChoiceStrategy):
     @staticmethod
-    def apply(decks_me, decks_opponent=None, num_victory_me=None,
-              num_shout_die_me=None, num_victory_opponent=None,
+    def apply(decks_me, decks_opponent=None, points_me=None,
+              num_shout_die_me=None, points_opponent=None,
               num_shout_die_opponent=None, offense_deck=None):
         undisclosed_decks = [deck for deck in decks_opponent if
                              deck.is_undisclosed()]
         remaining_die_opponent = constants.MAX_DIE - num_shout_die_opponent
-        remaining_win_me = constants.REQUIRED_WIN - num_victory_me
-        index = remaining_die_opponent + remaining_win_me - 1
+        remaining_points_me = constants.REQUIRED_POINTS - points_me
+        index = remaining_die_opponent + remaining_points_me - 1
         return undisclosed_decks[index]
 
 
 class ActionChoiceStrategy(abc.ABC):
     @staticmethod
     @abc.abstractmethod
-    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
-              num_victory_opponent, num_shout_die_opponent, round_, in_turn):
+    def apply(decks_me, decks_opponent, points_me, num_shout_die_me,
+              points_opponent, num_shout_die_opponent, round_, in_turn):
         pass
 
 
 class SimpleActionChoiceStrategy(ActionChoiceStrategy):
     @staticmethod
-    def apply(decks_me, decks_opponent, num_victory_me, num_shout_die_me,
-              num_victory_opponent, num_shout_die_opponent, round_, in_turn):
+    def apply(decks_me, decks_opponent, points_me, num_shout_die_me,
+              points_opponent, num_shout_die_opponent, round_, in_turn):
         if not ComputerPlayer.undisclosed_values(decks_me):
             return constants.Action.DONE
         elif round_ == 1:
@@ -765,10 +765,10 @@ class Game(object):
                 in_turn = player == duel.offense
                 opponent = duel.defense if in_turn else duel.offense
                 decks_opponent = opponent.decks
-                num_victory_opponent = opponent.num_victory
+                points_opponent = opponent.points
                 num_shout_die_opponent = opponent.num_shout_die
                 while not is_shout_valid:
-                    shout = player.shout(decks_opponent, num_victory_opponent,
+                    shout = player.shout(decks_opponent, points_opponent,
                                          num_shout_die_opponent, round_,
                                          in_turn)
                     action = shout.action
@@ -856,11 +856,11 @@ class Game(object):
                         message = '{} shouted draw correctly and gets a point. Duel #{} ended.'.format(
                             player.name, duel.index + 1)
                         duration = constants.Duration.AFTER_DUEL_ENDS
-                        if duel.winner.num_victory == constants.REQUIRED_WIN:
+                        if duel.winner.points == constants.REQUIRED_POINTS:
                             self._end(constants.GameResult.FINISHED,
                                       winner=duel.winner)
                             message += "\n{0} wins! The game has ended as {0} first scored {1} points.".format(
-                                duel.winner.name, constants.REQUIRED_WIN)
+                                duel.winner.name, constants.REQUIRED_POINTS)
                             duration = constants.Duration.AFTER_GAME_ENDS
                         return message, duration
         if round_ in (1, 2):
@@ -884,10 +884,10 @@ class Game(object):
                 duel.end(constants.DuelState.DRAWN, winner=duel.defense)
                 message = "The sums are equal, but no one shouted draw, so the defense ({}) gets a point. Duel #{} ended.".format(
                     duel.winner.name, duel.index + 1)
-            if duel.winner.num_victory == constants.REQUIRED_WIN:
+            if duel.winner.points == constants.REQUIRED_POINTS:
                 self._end(constants.GameResult.FINISHED, winner=duel.winner)
                 message += "\n{0} wins! The game has ended as {0} first scored {1} points.".format(
-                    duel.winner.name, constants.REQUIRED_WIN)
+                    duel.winner.name, constants.REQUIRED_POINTS)
                 duration = constants.Duration.AFTER_GAME_ENDS
                 return message, duration
             else:
@@ -929,7 +929,7 @@ class Game(object):
             deck = offense_undisclosed_decks[0]
         else:
             deck = offense.decide_offense_deck(defense.decks,
-                                               defense.num_victory,
+                                               defense.points,
                                                defense.num_shout_die)
         return OffenseDeckIndexInput(deck.index)
 
@@ -942,7 +942,7 @@ class Game(object):
             deck = defense_undisclosed_decks[0]
         else:
             deck = offense.decide_defense_deck(defense.decks,
-                                               defense.num_victory,
+                                               defense.points,
                                                defense.num_shout_die,
                                                offense.deck_in_duel)
         return DefenseDeckIndexInput(deck.index)
@@ -977,16 +977,17 @@ class Game(object):
 
 
 class Player(object):
-    def __init__(self, name=None, deck_in_duel_index=None, num_victory=0,
+    def __init__(self, name=None, deck_in_duel_index=None, points=0,
                  num_shout_die=0, num_shout_done=0, num_shout_draw=0,
                  decks=None, pile=None, key_settings=None, alias=None,
                  recent_action=None, joker_value_strategy=None,
                  joker_position_strategy=None, offense_deck_index_strategy=None,
-                 defense_deck_index_strategy=None, action_choice_strategy=None, *args, **kwargs):
+                 defense_deck_index_strategy=None, action_choice_strategy=None,
+                 *args, **kwargs):
         self.name = name
         self._deck_in_duel_index = deck_in_duel_index
         self.deck_in_duel = None
-        self.num_victory = num_victory
+        self.points = points
         self.num_shout_die = num_shout_die
         self.num_shout_done = num_shout_done
         self.num_shout_draw = num_shout_draw
@@ -1057,12 +1058,12 @@ class Player(object):
         self.decks = tuple(decks)
 
     @abc.abstractmethod
-    def decide_offense_deck(self, decks_opponent, num_victory_opponent,
+    def decide_offense_deck(self, decks_opponent, points_opponent,
                             num_shout_die_opponent):
         pass
 
     @abc.abstractmethod
-    def decide_defense_deck(self, decks_opponent, num_victory_opponent,
+    def decide_defense_deck(self, decks_opponent, points_opponent,
                             num_shout_die_opponent, offense_deck):
         pass
 
@@ -1090,13 +1091,13 @@ class Player(object):
     def to_array(self):
         decks = [deck.to_array() for deck in self.decks]
         decks = list(itertools.chain.from_iterable(decks))
-        num_victory = -1 if self.num_victory is None else self.num_victory
+        points = -1 if self.points is None else self.points
         num_shout_die = -1 if self.num_shout_die is None else self.num_shout_die
         if self._deck_in_duel_index is None:
             deck_in_duel_index = -1
         else:
             deck_in_duel_index = self._deck_in_duel_index
-        others = [num_victory, num_shout_die, deck_in_duel_index]
+        others = [points, num_shout_die, deck_in_duel_index]
         return numpy.array(decks + others)
 
     @classmethod
@@ -1104,11 +1105,11 @@ class Player(object):
         decks_array = numpy.array(array[0:9 * 19])
         decks_reshaped = decks_array.reshape(9, -1)
         decks = [Deck.from_array(deck_array) for deck_array in decks_reshaped]
-        num_victory = None if array[9 * 19] == -1 else array[9 * 19]
+        points = None if array[9 * 19] == -1 else array[9 * 19]
         num_shout_die = None if array[9 * 19 + 1] == -1 else array[9 * 19 + 1]
         deck_in_duel_index = None if array[9 * 19 + 2] == -1 else array[
             9 * 19 + 2]
-        return cls(decks=decks, num_victory=num_victory,
+        return cls(decks=decks, points=points,
                    num_shout_die=num_shout_die,
                    deck_in_duel_index=deck_in_duel_index)
 
@@ -1122,14 +1123,14 @@ class HumanPlayer(Player):
         self.joker_position_strategy = JokerPositionStrategyTextInput.from_human(
             self.name).value
 
-    def decide_offense_deck(self, decks_opponent, num_victory_opponent,
+    def decide_offense_deck(self, decks_opponent, points_opponent,
                             num_shout_die_opponent):
         undisclosed_decks = self.undisclosed_decks()
         deck_input = DeckTextInput.from_human(self.name, False,
                                               undisclosed_decks)
         return deck_input.value
 
-    def decide_defense_deck(self, decks_opponent, num_victory_opponent,
+    def decide_defense_deck(self, decks_opponent, points_opponent,
                             num_shout_die_opponent, offense_deck=None):
         undisclosed_decks = [deck for deck in decks_opponent if
                              deck.is_undisclosed()]
@@ -1137,7 +1138,7 @@ class HumanPlayer(Player):
                                               undisclosed_decks)
         return deck_input.value
 
-    def shout(self, decks_opponent, num_victory_opponent,
+    def shout(self, decks_opponent, points_opponent,
               num_shout_die_opponent, round_, in_turn):
         allowed_actions = self.valid_actions(round_)
         keys_settings_in_list = ['{}: \'{}\''.format(action.name, key) for
@@ -1176,19 +1177,19 @@ class ComputerPlayer(Player):
         if self.action_choice_strategy is None:
             self.action_choice_strategy = SimpleActionChoiceStrategy
 
-    def decide_offense_deck(self, decks_opponent, num_victory_opponent,
+    def decide_offense_deck(self, decks_opponent, points_opponent,
                             num_shout_die_opponent):
         strategy = self.offense_deck_index_strategy
-        deck = strategy.apply(self.decks, decks_opponent, self.num_victory,
-                              self.num_shout_die, num_victory_opponent,
+        deck = strategy.apply(self.decks, decks_opponent, self.points,
+                              self.num_shout_die, points_opponent,
                               num_shout_die_opponent)
         return deck
 
-    def decide_defense_deck(self, decks_opponent, num_victory_opponent,
+    def decide_defense_deck(self, decks_opponent, points_opponent,
                             num_shout_die_opponent, offense_deck):
         strategy = self.defense_deck_index_strategy
-        deck = strategy.apply(self.decks, decks_opponent, self.num_victory,
-                              self.num_shout_die, num_victory_opponent,
+        deck = strategy.apply(self.decks, decks_opponent, self.points,
+                              self.num_shout_die, points_opponent,
                               num_shout_die_opponent, offense_deck)
         return deck
 
@@ -1291,11 +1292,11 @@ class ComputerPlayer(Player):
                         values.add(card.value)
         return tuple(values)
 
-    def shout(self, decks_opponent, num_victory_opponent,
+    def shout(self, decks_opponent, points_opponent,
               num_shout_die_opponent, round_, in_turn):
         strategy = self.action_choice_strategy
-        action = strategy.apply(self.decks, decks_opponent, self.num_victory,
-                                self.num_shout_die, num_victory_opponent,
+        action = strategy.apply(self.decks, decks_opponent, self.points,
+                                self.num_shout_die, points_opponent,
                                 num_shout_die_opponent, round_, in_turn)
         return Shout(self, action)
 
@@ -1542,7 +1543,7 @@ class Duel(object):
                     self.loser = self.offense
                 else:
                     self.loser = self.defense
-            self.winner.num_victory += 1
+            self.winner.points += 1
         for player in self.players:
             player.deck_in_duel.finish()
             for card in player.deck_in_duel:
@@ -1613,7 +1614,7 @@ class OutputHandler(object):
             'Offense' if game.player_red == duel.offense else 'Defense')
 
         red_name = '{} ({})'.format(game.player_red.name, game.player_red.alias)
-        red_stats = 'Score {} / Die {}'.format(game.player_red.num_victory,
+        red_stats = 'Points {} / Die {}'.format(game.player_red.points,
                                                game.player_red.num_shout_die)
         red_first_line = '{:^30}{:^75}{:^30}'.format(red_role, red_name,
                                                      red_stats)
@@ -1664,7 +1665,7 @@ class OutputHandler(object):
         black_role = '' if duel is None else (
             'Offense' if game.player_black == duel.offense else 'Defense')
         black_name = '{} (Player Black)'.format(game.player_black.name)
-        black_stats = 'Win {} / Die {}'.format(game.player_black.num_victory,
+        black_stats = 'Points {} / Die {}'.format(game.player_black.points,
                                                game.player_black.num_shout_die)
         black_first_line = '{:^30}{:^75}{:^30}'.format(black_role, black_name,
                                                        black_stats)
