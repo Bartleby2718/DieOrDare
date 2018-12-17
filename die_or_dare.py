@@ -823,7 +823,17 @@ class Game(object):
                 self.player_black.recent_action = shout.action
             if red_shout_heard and black_shout_heard:
                 break
-        # priority: done > die > draw > dare (then offense > defense)
+        # priority: die > done > draw > dare (then offense > defense)
+        for player in duel.players:
+            valid_actions = player.valid_actions(round_)
+            if constants.Action.DIE in valid_actions:
+                if player.recent_action == constants.Action.DIE:
+                    player.num_shout_die += 1
+                    duel.end(constants.DuelState.DIED)
+                    message = "{} died, so no one gets a point. Duel #{} ended.".format(
+                        player.name, duel.index + 1)
+                    duration = constants.Duration.AFTER_DUEL_ENDS
+                    return message, duration
         for player in duel.players:
             valid_actions = player.valid_actions(round_)
             if constants.Action.DONE in valid_actions:
@@ -836,16 +846,6 @@ class Game(object):
                             player.name, duel.index + 1)
                         duration = constants.Duration.AFTER_GAME_ENDS
                         return message, duration
-        for player in duel.players:
-            valid_actions = player.valid_actions(round_)
-            if constants.Action.DIE in valid_actions:
-                if player.recent_action == constants.Action.DIE:
-                    player.num_shout_die += 1
-                    duel.end(constants.DuelState.DIED)
-                    message = "{} died, so no one gets a point. Duel #{} ended.".format(
-                        player.name, duel.index + 1)
-                    duration = constants.Duration.AFTER_DUEL_ENDS
-                    return message, duration
         for player in duel.players:
             valid_actions = player.valid_actions(round_)
             if constants.Action.DRAW in valid_actions:
