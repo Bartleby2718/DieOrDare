@@ -1377,6 +1377,18 @@ class Deck(object):
     def __getitem__(self, index):
         return self._cards[index]
 
+    def mask_if_undisclosed(self):
+        if self.is_undisclosed():
+            return '', '', ''
+        else:
+            return tuple(str(card) for card in self)
+
+    def show_undisclosed_delegate(self):
+        if self.is_undisclosed():
+            return str(self.delegate)
+        else:
+            return ''
+
     @property
     def index(self):
         return self._index
@@ -1599,7 +1611,20 @@ class OutputHandler(object):
 
     @staticmethod
     def display(game_state_in_json=None, message='', duration=0):
-        print('{:-^135}'.format(str()))
+        column_width = 9
+        total_width = column_width * constants.DECK_PER_PILE
+        name_format = '{} ({})'
+        stats_format = 'Points {} | Die {}'
+
+        def center(content, width, fill=''):
+            return '{:{}^{}}'.format(content, fill, width)
+
+        def to_line(iterable):
+            aligned = (center(elem, column_width) for elem in iterable)
+            return ''.join(aligned)
+
+        divider = center('', total_width, fill='-')
+        print(divider)
         if game_state_in_json is None and message:
             message_delimited = message.split('\n')
             print('Message:  {}'.format(message_delimited[0]))
@@ -1609,66 +1634,71 @@ class OutputHandler(object):
             return
         game = jsonpickle.decode(game_state_in_json)
         duel = game.duel_ongoing
-        row_format = '{:^15}' * constants.DECK_PER_PILE
         red_role = '' if duel is None else (
             'Offense' if game.player_red == duel.offense else 'Defense')
-
-        red_name = '{} ({})'.format(game.player_red.name, game.player_red.alias)
-        red_stats = 'Points {} / Die {}'.format(game.player_red.points,
-                                               game.player_red.num_shout_die)
-        red_first_line = '{:^30}{:^75}{:^30}'.format(red_role, red_name,
-                                                     red_stats)
+        red_name = name_format.format(game.player_red.name,
+                                      game.player_red.alias)
+        red_stats = stats_format.format(game.player_red.points,
+                                        game.player_red.num_shout_die)
+        red_role_aligned = center(red_role, column_width * 2)
+        red_name_aligned = center(red_name, column_width * 5)
+        red_stats_aligned = center(red_stats, column_width * 2)
+        red_first_line = '{}{}{}'.format(red_role_aligned, red_name_aligned,
+                                         red_stats_aligned)
         print(red_first_line)
         red_decks = game.player_red.decks
         red_numbers = (('< #{} >' if deck.is_in_duel() else '#{}').format(
             deck.index + 1) for deck in red_decks)
-        red_number_line = row_format.format(*red_numbers)
+        red_number_line = to_line(red_numbers)
         print(red_number_line)
-        red_undisclosed_delegates = (
-            str(deck[0]) if deck.is_undisclosed() else '' for deck in
-            red_decks)
-        print(row_format.format(*red_undisclosed_delegates))
-        red_opened_delegates = (
-            '' if deck.is_undisclosed() else str(deck[0]) for deck in
-            red_decks)
-        print(row_format.format(*red_opened_delegates))
-        red_seconds = ('' if deck.is_undisclosed() else str(deck[1]) for
-                       deck in red_decks)
-        print(row_format.format(*red_seconds))
-        red_lasts = ('' if deck.is_undisclosed() else str(deck[2]) for
-                     deck in red_decks)
-        print(row_format.format(*red_lasts))
+        red_undisclosed_delegates = (deck.show_undisclosed_delegate() for deck
+                                     in red_decks)
+        row_undisclosed_delegate_line = to_line(red_undisclosed_delegates)
+        print(row_undisclosed_delegate_line)
+        red_opened_delegates = (deck.mask_if_undisclosed()[0] for deck in
+                                red_decks)
+        row_opened_delegates_line = to_line(red_opened_delegates)
+        print(row_opened_delegates_line)
+        red_seconds = (deck.mask_if_undisclosed()[1] for deck in red_decks)
+        row_seconds_line = to_line(red_seconds)
+        print(row_seconds_line)
+        red_lasts = (deck.mask_if_undisclosed()[2] for deck in red_decks)
+        red_lasts_line = to_line(red_lasts)
+        print(red_lasts_line)
         print()
-        print('{:^135}'.format(
-            '' if duel is None else '[Duel #{}]'.format(duel.index + 1)))
+        duel_str = '' if duel is None else '[Duel #{}]'.format(duel.index + 1)
+        duel_line = center(duel_str, total_width)
+        print(duel_line)
         print()
         black_decks = game.player_black.decks
-        black_lasts = ('' if deck.is_undisclosed() else str(deck[2]) for
-                       deck in black_decks)
-        print(row_format.format(*black_lasts))
-        black_seconds = ('' if deck.is_undisclosed() else str(deck[1])
-                         for deck in black_decks)
-        print(row_format.format(*black_seconds))
-        black_opened_delegates = (
-            '' if deck.is_undisclosed() else str(deck[0]) for
-            deck in black_decks)
-        print(row_format.format(*black_opened_delegates))
-        black_undisclosed_delegate = (
-            str(deck[0]) if deck.is_undisclosed() else '' for
-            deck in black_decks)
-        print(row_format.format(*black_undisclosed_delegate))
+        black_lasts = (deck.mask_if_undisclosed()[2] for deck in black_decks)
+        print(to_line(black_lasts))
+        black_seconds = (deck.mask_if_undisclosed()[1] for deck in black_decks)
+        print(to_line(black_seconds))
+        black_opened_delegates = (deck.mask_if_undisclosed()[0] for deck in
+                                  black_decks)
+        print(to_line(black_opened_delegates))
+        black_undisclosed_delegates = (deck.show_undisclosed_delegate() for deck
+                                       in black_decks)
+        black_undisclosed_delegates_line = to_line(black_undisclosed_delegates)
+        print(black_undisclosed_delegates_line)
         black_numbers = (
             ('< #{} >' if deck.is_in_duel() else '#{}').format(
                 deck.index + 1) for deck in black_decks)
-        black_number_line = row_format.format(*black_numbers)
+        black_number_line = to_line(black_numbers)
         print(black_number_line)
         black_role = '' if duel is None else (
             'Offense' if game.player_black == duel.offense else 'Defense')
-        black_name = '{} (Player Black)'.format(game.player_black.name)
-        black_stats = 'Points {} / Die {}'.format(game.player_black.points,
-                                               game.player_black.num_shout_die)
-        black_first_line = '{:^30}{:^75}{:^30}'.format(black_role, black_name,
-                                                       black_stats)
+        black_name = name_format.format(game.player_black.name,
+                                        game.player_black.alias)
+        black_stats = stats_format.format(game.player_black.points,
+                                          game.player_black.num_shout_die)
+        black_role_aligned = center(black_role, column_width * 2)
+        black_name_aligned = center(black_name, column_width * 5)
+        black_stats_aligned = center(black_stats, column_width * 2)
+        black_first_line = '{}{}{}'.format(black_role_aligned,
+                                           black_name_aligned,
+                                           black_stats_aligned)
         print(black_first_line)
         if message:
             message_delimited = message.split('\n')
