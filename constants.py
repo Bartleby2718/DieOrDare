@@ -25,6 +25,7 @@ class Suit(enum.Enum):
 
 
 class Action(enum.Enum):
+    IDLE = 0
     DARE = 1
     DIE = 2
     DONE = 3
@@ -47,6 +48,7 @@ class DuelState(enum.Enum):
     ABORTED_BY_WRONG_DONE = 7
     ABORTED_BY_WRONG_DRAW = 8
     ABORTED_BEFORE_DOUBLE_DONE = 9
+    ABORTED_BY_WRONG_CHOICE = 10
 
 
 class Duration(object):
@@ -69,6 +71,7 @@ class GameResult(enum.Enum):
     FORFEITED_BY_WRONG_DONE = 3
     FORFEITED_BY_WRONG_DRAW = 4
     FORFEITED_BEFORE_DOUBLE_DONE = 5
+    ABORTED_BY_WRONG_CHOICE = 6
 
 
 JOKER = 'Joker'
@@ -78,7 +81,7 @@ INDENT = '{:10}'.format(str())
 
 DECK_PER_PILE = 9
 CARD_PER_DECK = 3
-REQUIRED_WIN = 3
+REQUIRED_POINTS = 3
 MAX_DIE = 2
 MAX_DONE = 1
 MAX_DRAW = 1
