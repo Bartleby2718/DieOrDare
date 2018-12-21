@@ -1,6 +1,8 @@
 import abc
 import argparse
+import collections
 import constants
+import copy
 import datetime
 import functools
 import itertools
@@ -90,17 +92,20 @@ class KeySettingsInput(Input):
 
     @staticmethod
     def bottom_left():
-        return {constants.Action.DARE: 'z', constants.Action.DIE: 'x',
+        return {constants.Action.IDLE: 'b', constants.Action.DARE: 'z',
+                constants.Action.DIE: 'x',
                 constants.Action.DONE: 'c', constants.Action.DRAW: 'v'}
 
     @staticmethod
     def top_left():
-        return {constants.Action.DARE: 'q', constants.Action.DIE: 'w',
+        return {constants.Action.IDLE: 't', constants.Action.DARE: 'q',
+                constants.Action.DIE: 'w',
                 constants.Action.DONE: 'e', constants.Action.DRAW: 'r'}
 
     @staticmethod
     def top_right():
-        return {constants.Action.DARE: 'u', constants.Action.DIE: 'i',
+        return {constants.Action.IDLE: 'y', constants.Action.DARE: 'u',
+                constants.Action.DIE: 'i',
                 constants.Action.DONE: 'o', constants.Action.DRAW: 'p'}
 
 
@@ -393,8 +398,9 @@ class OffenseDeckChoiceStrategy(abc.ABC):
 
 class BiggestOffenseDeck(OffenseDeckChoiceStrategy):
     @staticmethod
-    def apply(decks_me, decks_opponent, points_me, num_shout_die_me,
-              points_opponent, num_shout_die_opponent):
+    def apply(decks_me, decks_opponent=None, points_me=None,
+              num_shout_die_me=None, points_opponent=None,
+              num_shout_die_opponent=None):
         undisclosed_decks_me = [deck for deck in decks_me if
                                 deck.is_undisclosed()]
         return max(undisclosed_decks_me, key=lambda x: x.index)
@@ -402,8 +408,9 @@ class BiggestOffenseDeck(OffenseDeckChoiceStrategy):
 
 class AnyOffenseDeck(OffenseDeckChoiceStrategy):
     @staticmethod
-    def apply(decks_me, decks_opponent, points_me, num_shout_die_me,
-              points_opponent, num_shout_die_opponent):
+    def apply(decks_me, decks_opponent=None, points_me=None,
+              num_shout_die_me=None, points_opponent=None,
+              num_shout_die_opponent=None):
         undisclosed_decks = [deck for deck in decks_me if deck.is_undisclosed()]
         return random.choice(undisclosed_decks)
 
@@ -411,15 +418,16 @@ class AnyOffenseDeck(OffenseDeckChoiceStrategy):
 class DefenseDeckChoiceStrategy(abc.ABC):
     @staticmethod
     @abc.abstractmethod
-    def apply(decks_me, decks_opponent, points_me, num_shout_die_me,
-              points_opponent, num_shout_die_opponent, offense_deck=None):
+    def apply(decks_opponent, decks_me, points_me, num_shout_die_me,
+              points_opponent, num_shout_die_opponent):
         pass
 
 
 class SmallestDefenseDeck(DefenseDeckChoiceStrategy):
     @staticmethod
-    def apply(decks_me, decks_opponent, points_me, num_shout_die_me,
-              points_opponent, num_shout_die_opponent, offense_deck=None):
+    def apply(decks_opponent, decks_me=None, points_me=None,
+              num_shout_die_me=None, points_opponent=None,
+              num_shout_die_opponent=None):
         undisclosed_decks_opponent = [deck for deck in decks_opponent if
                                       deck.is_undisclosed()]
         return min(undisclosed_decks_opponent, key=lambda x: x.index)
@@ -427,8 +435,9 @@ class SmallestDefenseDeck(DefenseDeckChoiceStrategy):
 
 class AnyDefenseDeck(DefenseDeckChoiceStrategy):
     @staticmethod
-    def apply(decks_me, decks_opponent, points_me, num_shout_die_me,
-              points_opponent, num_shout_die_opponent, offense_deck=None):
+    def apply(decks_opponent, decks_me=None, points_me=None,
+              num_shout_die_me=None, points_opponent=None,
+              num_shout_die_opponent=None):
         undisclosed_decks = [deck for deck in decks_opponent if
                              deck.is_undisclosed()]
         return random.choice(undisclosed_decks)
@@ -436,9 +445,9 @@ class AnyDefenseDeck(DefenseDeckChoiceStrategy):
 
 class StatsConsideredBiggest(DefenseDeckChoiceStrategy):
     @staticmethod
-    def apply(decks_me, decks_opponent=None, points_me=None,
+    def apply(decks_opponent, decks_me=None, points_me=None,
               num_shout_die_me=None, points_opponent=None,
-              num_shout_die_opponent=None, offense_deck=None):
+              num_shout_die_opponent=None):
         undisclosed_decks = [deck for deck in decks_opponent if
                              deck.is_undisclosed()]
         remaining_die_opponent = constants.MAX_DIE - num_shout_die_opponent
@@ -450,20 +459,22 @@ class StatsConsideredBiggest(DefenseDeckChoiceStrategy):
 class ActionChoiceStrategy(abc.ABC):
     @staticmethod
     @abc.abstractmethod
-    def apply(decks_me, decks_opponent, points_me, num_shout_die_me,
-              points_opponent, num_shout_die_opponent, round_, in_turn):
+    def apply(round_, in_turn, decks_me, decks_opponent, num_shout_die_me,
+              is_opponent_red, num_shout_die_opponent, points_me,
+              points_opponent):
         pass
 
 
 class SimpleActionChoiceStrategy(ActionChoiceStrategy):
     @staticmethod
-    def apply(decks_me, decks_opponent, points_me, num_shout_die_me,
-              points_opponent, num_shout_die_opponent, round_, in_turn):
+    def apply(round_, in_turn, decks_me, decks_opponent, num_shout_die_me,
+              is_opponent_red, num_shout_die_opponent=None, points_me=None,
+              points_opponent=None):
         if not ComputerPlayer.undisclosed_values(decks_me):
             return constants.Action.DONE
         elif round_ == 1:
             odds_win, odds_draw, odds_lose = ComputerPlayer.get_chances(
-                decks_me, decks_opponent)
+                decks_me, decks_opponent, is_opponent_red)
             if in_turn:
                 odds_lose += odds_draw
             else:
@@ -475,7 +486,7 @@ class SimpleActionChoiceStrategy(ActionChoiceStrategy):
                     return constants.Action.DARE
         elif round_ == 2:
             odds_win, odds_draw, odds_lose = ComputerPlayer.get_chances(
-                decks_me, decks_opponent)
+                decks_me, decks_opponent, is_opponent_red)
             if in_turn:
                 odds_lose += odds_draw
             else:
@@ -704,6 +715,8 @@ class Game(object):
         self.duel_index += 1
         self.duel_ongoing = self.duels[self.duel_index]
         self.duel_ongoing.start()
+        for player in self.players:
+            player.recent_action = None
         return self.duel_ongoing
 
     def is_over(self):
@@ -729,22 +742,25 @@ class Game(object):
             duration = None
         return message, duration
 
-    def accept(self):
+    def accept(self, prev_envstate=None):
+        # TODO: prev_envstate...
         duel = self.duel_ongoing
         if duel.offense.deck_in_duel is None:
-            return self._decide_offense_deck()
+            return self._decide_offense_deck(prev_envstate)
         elif duel.defense.deck_in_duel is None:
-            return self._decide_defense_deck()
+            return self._decide_defense_deck(prev_envstate)
         elif duel.round_ in (1, 2):
             timeout = constants.Duration.ACTION
-            return self._get_actions(timeout=timeout)
+            return self._get_actions(timeout=timeout,
+                                     prev_envstate=prev_envstate)
         elif duel.round_ == 3:
             timeout = constants.Duration.FINAL_ACTION
-            return self._get_actions(timeout=timeout)
+            return self._get_actions(timeout=timeout,
+                                     prev_envstate=prev_envstate)
         else:
             raise ValueError('Invalid.')
 
-    def _get_actions(self, timeout=0):
+    def _get_actions(self, timeout=0, prev_envstate=None):
         duel = self.duel_ongoing
         round_ = duel.round_
         if all(isinstance(player, HumanPlayer) for player in self.players):
@@ -759,20 +775,14 @@ class Game(object):
         else:
             shouts = []
             for player in duel.players:
-                valid_actions = player.valid_actions(round_)
-                is_shout_valid = False
-                shout = None
                 in_turn = player == duel.offense
                 opponent = duel.defense if in_turn else duel.offense
-                decks_opponent = opponent.decks
-                points_opponent = opponent.points
-                num_shout_die_opponent = opponent.num_shout_die
-                while not is_shout_valid:
-                    shout = player.shout(decks_opponent, points_opponent,
-                                         num_shout_die_opponent, round_,
-                                         in_turn)
-                    action = shout.action
-                    is_shout_valid = action in valid_actions
+                decks_opponent, points_opponent, num_shout_die_opponent, deck_in_duel_index = opponent.public_information()
+                shout = player.shout(decks_opponent, points_opponent,
+                                     num_shout_die_opponent, round_,
+                                     in_turn, duel.index, prev_envstate)
+                action = shout.action
+                shout = Shout(player, action)
                 shouts.append(shout)
             shout_input = ShoutInput(shouts)
             return shout_input
@@ -823,17 +833,7 @@ class Game(object):
                 self.player_black.recent_action = shout.action
             if red_shout_heard and black_shout_heard:
                 break
-        # priority: die > done > draw > dare (then offense > defense)
-        for player in duel.players:
-            valid_actions = player.valid_actions(round_)
-            if constants.Action.DIE in valid_actions:
-                if player.recent_action == constants.Action.DIE:
-                    player.num_shout_die += 1
-                    duel.end(constants.DuelState.DIED)
-                    message = "{} died, so no one gets a point. Duel #{} ended.".format(
-                        player.name, duel.index + 1)
-                    duration = constants.Duration.AFTER_DUEL_ENDS
-                    return message, duration
+        # priority: done > die > draw > dare (then offense > defense)
         for player in duel.players:
             valid_actions = player.valid_actions(round_)
             if constants.Action.DONE in valid_actions:
@@ -846,6 +846,16 @@ class Game(object):
                             player.name, duel.index + 1)
                         duration = constants.Duration.AFTER_GAME_ENDS
                         return message, duration
+        for player in duel.players:
+            valid_actions = player.valid_actions(round_)
+            if constants.Action.DIE in valid_actions:
+                if player.recent_action == constants.Action.DIE:
+                    player.num_shout_die += 1
+                    duel.end(constants.DuelState.DIED)
+                    message = "{} died, so no one gets a point. Duel #{} ended.".format(
+                        player.name, duel.index + 1)
+                    duration = constants.Duration.AFTER_DUEL_ENDS
+                    return message, duration
         for player in duel.players:
             valid_actions = player.valid_actions(round_)
             if constants.Action.DRAW in valid_actions:
@@ -920,32 +930,37 @@ class Game(object):
         duration = constants.Duration.AFTER_DECK_CHOICE
         return message, duration
 
-    def _decide_offense_deck(self):
+    def _decide_offense_deck(self, prev_envstate=None):
         duel = self.duel_ongoing
         offense, defense = duel.players
+        defense_decks, defense_points, defense_num_shout_die, garbage = defense.public_information()
         # Skip choosing deck in the last duel
         if self.duel_index == constants.DECK_PER_PILE - 1:
             offense_undisclosed_decks = offense.undisclosed_decks()
             deck = offense_undisclosed_decks[0]
+            return OffenseDeckIndexInput(deck.index)
         else:
-            deck = offense.decide_offense_deck(defense.decks,
-                                               defense.points,
-                                               defense.num_shout_die)
-        return OffenseDeckIndexInput(deck.index)
+            deck_index = offense.decide_offense_deck_index(defense_decks,
+                                                           defense_points,
+                                                           defense_num_shout_die,
+                                                           prev_envstate)
+            return OffenseDeckIndexInput(deck_index)
 
-    def _decide_defense_deck(self):
+    def _decide_defense_deck(self, prev_envstate=None):
         duel = self.duel_ongoing
         offense, defense = duel.players
+        defense_decks, defense_points, defense_num_shout_die, deck_in_duel_index = defense.public_information()
         # Skip choosing deck in the last duel
         if self.duel_index == constants.DECK_PER_PILE - 1:
             defense_undisclosed_decks = defense.undisclosed_decks()
             deck = defense_undisclosed_decks[0]
+            return DefenseDeckIndexInput(deck.index)
         else:
-            deck = offense.decide_defense_deck(defense.decks,
-                                               defense.points,
-                                               defense.num_shout_die,
-                                               offense.deck_in_duel)
-        return DefenseDeckIndexInput(deck.index)
+            deck_index = offense.decide_defense_deck_index(defense_decks,
+                                                           defense_points,
+                                                           defense_num_shout_die,
+                                                           prev_envstate)
+            return DefenseDeckIndexInput(deck_index)
 
     def _end(self, result, winner=None, loser=None):
         self._over = True
@@ -954,7 +969,8 @@ class Game(object):
         self.winner = winner
         self.loser = loser
         if self.winner is None and self.loser is None:
-            raise ValueError('Either winner or loser must be supplied.')
+            if result not in [constants.GameResult.ABORTED_BY_WRONG_CHOICE]:
+                raise ValueError('Either winner or loser must be supplied.')
         elif self.winner is None:
             if self.loser == self.player_black:
                 self.winner = self.player_red
@@ -974,6 +990,18 @@ class Game(object):
 
     def to_json(self):
         return jsonpickle.encode(self)
+
+    def to_array(self):
+        red = list(self.player_red.to_array())
+        black = list(self.player_black.to_array())
+        if self.winner is None:
+            winner = -1
+        else:
+            winner = int(self.winner == self.player_red)
+        result = -1 if self.result is None else self.result.value
+        duel_index = -1 if self.duel_index is None else self.duel_index
+        common = [winner, result, duel_index]
+        return numpy.array(red + black + common)
 
 
 class Player(object):
@@ -1004,6 +1032,30 @@ class Player(object):
         self.defense_deck_index_strategy = defense_deck_index_strategy
         self.action_choice_strategy = action_choice_strategy
 
+    @property
+    def deck_in_duel_index(self):
+        return self._deck_in_duel_index
+
+    def decks_public(self):
+        copied_decks = []
+        for deck in self.decks:
+            copied_cards = []
+            for card in deck:
+                if card.is_open():
+                    copied_card = copy.copy(card)
+                else:
+                    copied_card = Card(None, None, None, None, False)
+                copied_cards.append(copied_card)
+            copied_deck = Deck(copied_cards, deck.state, deck.index,
+                               deck.opponent_deck_index,
+                               deck.card_to_open_index)
+            copied_decks.append(copied_deck)
+        return copied_decks
+
+    def public_information(self):
+        decks = self.decks_public()
+        return decks, self.points, self.num_shout_die, self.deck_in_duel_index
+
     def valid_actions(self, round_):
         actions = [constants.Action.DONE]
         if round_ == 1:
@@ -1015,7 +1067,7 @@ class Player(object):
             if self.num_shout_die < constants.MAX_DIE:
                 actions.append(constants.Action.DIE)
         elif round_ == 3:
-            actions.append(None)
+            actions.append(constants.Action.IDLE)
             if self.num_shout_draw < constants.MAX_DRAW:
                 actions.append(constants.Action.DRAW)
         else:
@@ -1024,6 +1076,14 @@ class Player(object):
 
     def undisclosed_decks(self):
         return [deck for deck in self.decks if deck.is_undisclosed()]
+
+    def revealed_joker(self):
+        for deck in self.decks:
+            for card in deck:
+                if card.is_open() and card.is_joker():
+                    return True
+        else:
+            return False
 
     def take_pile(self, pile):
         if isinstance(pile, RedPile):
@@ -1057,14 +1117,27 @@ class Player(object):
             decks.append(deck)
         self.decks = tuple(decks)
 
+    def reset(self):
+        self._deck_in_duel_index = None
+        self.deck_in_duel = None
+        self.points = 0
+        self.num_shout_die = 0
+        self.num_shout_done = 0
+        self.num_shout_draw = 0
+        self.decks = None
+        self.pile = None
+        self.key_settings = {action: '' for action in constants.Action}
+        self.alias = None
+        self.recent_action = None
+
     @abc.abstractmethod
-    def decide_offense_deck(self, decks_opponent, points_opponent,
-                            num_shout_die_opponent):
+    def decide_offense_deck_index(self, decks_opponent, points_opponent,
+                                  num_shout_die_opponent, prev_envstate=None):
         pass
 
     @abc.abstractmethod
-    def decide_defense_deck(self, decks_opponent, points_opponent,
-                            num_shout_die_opponent, offense_deck):
+    def decide_defense_deck_index(self, decks_opponent, points_opponent,
+                                  num_shout_die_opponent, prev_envstate=None):
         pass
 
     def send_to_duel(self, deck, opponent_deck=None):
@@ -1123,30 +1196,29 @@ class HumanPlayer(Player):
         self.joker_position_strategy = JokerPositionStrategyTextInput.from_human(
             self.name).value
 
-    def decide_offense_deck(self, decks_opponent, points_opponent,
-                            num_shout_die_opponent):
+    def decide_offense_deck_index(self, decks_opponent, points_opponent,
+                                  num_shout_die_opponent, prev_envstate=None):
         undisclosed_decks = self.undisclosed_decks()
         deck_input = DeckTextInput.from_human(self.name, False,
                                               undisclosed_decks)
-        return deck_input.value
+        return deck_input.value.index
 
-    def decide_defense_deck(self, decks_opponent, points_opponent,
-                            num_shout_die_opponent, offense_deck=None):
+    def decide_defense_deck_index(self, decks_opponent, points_opponent,
+                                  num_shout_die_opponent, prev_envstate=None):
         undisclosed_decks = [deck for deck in decks_opponent if
                              deck.is_undisclosed()]
         deck_input = DeckTextInput.from_human(self.name, True,
                                               undisclosed_decks)
-        return deck_input.value
+        deck = deck_input.value
+        return deck.index
 
     def shout(self, decks_opponent, points_opponent,
-              num_shout_die_opponent, round_, in_turn):
+              num_shout_die_opponent, round_, in_turn, duel_index,
+              prev_envstate=None):
         allowed_actions = self.valid_actions(round_)
         keys_settings_in_list = ['{}: \'{}\''.format(action.name, key) for
                                  action, key in self.key_settings.items() if
                                  action in allowed_actions]
-        if None in allowed_actions:
-            do_nothing = 'Pass: \'Enter\''
-            keys_settings_in_list.append(do_nothing)
         keys_settings_in_str = ', '.join(keys_settings_in_list)
         prompt = '{}, what will you do? ({})'.format(self.name,
                                                      keys_settings_in_str)
@@ -1177,31 +1249,33 @@ class ComputerPlayer(Player):
         if self.action_choice_strategy is None:
             self.action_choice_strategy = SimpleActionChoiceStrategy
 
-    def decide_offense_deck(self, decks_opponent, points_opponent,
-                            num_shout_die_opponent):
+    def decide_offense_deck_index(self, decks_opponent, points_opponent,
+                                  num_shout_die_opponent, prev_envstate=None):
         strategy = self.offense_deck_index_strategy
         deck = strategy.apply(self.decks, decks_opponent, self.points,
                               self.num_shout_die, points_opponent,
                               num_shout_die_opponent)
-        return deck
+        return deck.index
 
-    def decide_defense_deck(self, decks_opponent, points_opponent,
-                            num_shout_die_opponent, offense_deck):
+    def decide_defense_deck_index(self, decks_opponent, points_opponent,
+                                  num_shout_die_opponent, prev_envstate=None):
         strategy = self.defense_deck_index_strategy
-        deck = strategy.apply(self.decks, decks_opponent, self.points,
+        deck = strategy.apply(decks_opponent, self.decks, self.points,
                               self.num_shout_die, points_opponent,
-                              num_shout_die_opponent, offense_deck)
-        return deck
+                              num_shout_die_opponent)
+        return deck.index
 
     @staticmethod
-    def get_chances(decks_me, decks_opponent,
+    def get_chances(decks_me, decks_opponent, is_opponent_red,
+                    deck_in_duel_me=None,
+                    deck_in_duel_opponent=None,
                     joker_value_strategy_me=SameAsMax):
         """get chances of winning, tying, and losing
-        assuming both player use SameAsMax for joker value strategy
+        assuming the opponent uses SameAsMax as its joker value strategy
         """
 
         def guess_joker_value(delegate_value, joker_value_strategy=SameAsMax):
-            """give an educated guess about the value of joker
+            """make an educated guess about the value of joker
             (There is no guarantee that the return value is correct.)
             """
             if joker_value_strategy == Thirteen:
@@ -1214,11 +1288,11 @@ class ComputerPlayer(Player):
                 return random.randint(1, delegate_value)
 
         # get my hidden cards
-        deck_in_duel_me = next(deck for deck in decks_me if deck.is_in_duel())
-        num_opened = sum(1 for card in deck_in_duel_me if card.is_open())
+        if deck_in_duel_me is None:
+            deck_in_duel_me = next(
+                deck for deck in decks_me if deck.is_in_duel())
         current_sum_me = sum(
             card.value for card in deck_in_duel_me if card.is_open())
-        num_to_open = 3 - num_opened
         delegate_value_me = deck_in_duel_me.delegate.value
         hidden_cards_me = []
         for deck in decks_me:
@@ -1226,24 +1300,42 @@ class ComputerPlayer(Player):
                 if not card.is_open():
                     if card.is_joker() or card.value <= delegate_value_me:
                         hidden_cards_me.append(card)
-        # get the opponent's cards
-        deck_in_duel_opponent = next(
-            deck for deck in decks_opponent if deck.is_in_duel())
+        # get the number of cards to open
+        num_opened = sum(1 for card in deck_in_duel_me if card.is_open())
+        num_to_open = 3 - num_opened
+        # get the opponent's hidden cards
+        if deck_in_duel_opponent is None:
+            deck_in_duel_opponent = next(
+                deck for deck in decks_opponent if deck.is_in_duel())
         current_sum_opponent = sum(
             card.value for card in deck_in_duel_opponent if
             card.is_open())
         delegate_value_opponent = deck_in_duel_opponent.delegate.value
         hidden_cards_opponent = []
+
+        if is_opponent_red:
+            entire_pile = RedPile()
+            unopened_pile = RedUnopenedPile(entire_pile.cards)
+        else:
+            entire_pile = BlackPile()
+            unopened_pile = BlackUnopenedPile(entire_pile.cards)
         for deck in decks_opponent:
             for card in deck:
-                if not card.is_open():
-                    if card.is_joker() or card.value <= delegate_value_opponent:
-                        hidden_cards_opponent.append(card)
+                if card.is_open():
+                    try:
+                        unopened_pile.remove(card)
+                    except ValueError:
+                        print(unopened_pile)
+                        print(card)
+        for card in unopened_pile:
+            if card.is_joker() or card.value <= delegate_value_opponent:
+                hidden_cards_opponent.append(card)
         # calculate the odds
         num_win, num_lose, num_draw = 0, 0, 0
-        candidates_me = itertools.combinations(hidden_cards_me, num_to_open)
-        candidates_opponent = itertools.combinations(hidden_cards_opponent,
-                                                     num_to_open)
+        candidates_me = list(
+            itertools.combinations(hidden_cards_me, num_to_open))
+        candidates_opponent = list(itertools.combinations(hidden_cards_opponent,
+                                                          num_to_open))
         for cards_me in candidates_me:
             for cards_opponent in candidates_opponent:
                 # get my sum
@@ -1293,12 +1385,33 @@ class ComputerPlayer(Player):
         return tuple(values)
 
     def shout(self, decks_opponent, points_opponent,
-              num_shout_die_opponent, round_, in_turn):
+              num_shout_die_opponent, round_, in_turn, duel_index,
+              prev_envstate=None):
         strategy = self.action_choice_strategy
-        action = strategy.apply(self.decks, decks_opponent, self.points,
-                                self.num_shout_die, points_opponent,
-                                num_shout_die_opponent, round_, in_turn)
+        is_opponent_red = in_turn ^ (duel_index % 2 == 0)
+        action = strategy.apply(round_, in_turn, self.decks, decks_opponent,
+                                self.num_shout_die, is_opponent_red,
+                                num_shout_die_opponent, self.points,
+                                points_opponent)
         return Shout(self, action)
+
+
+class DieBlindButSmart(ComputerPlayer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.joker_value_strategy = Thirteen
+        self.joker_position_strategy = JokerAnywhere
+        self.offense_deck_index_strategy = BiggestOffenseDeck
+        self.defense_deck_index_strategy = SmallestDefenseDeck
+
+
+class AntiDie(ComputerPlayer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.joker_value_strategy = Thirteen
+        self.joker_position_strategy = JokerAnywhere
+        self.offense_deck_index_strategy = BiggestOffenseDeck
+        self.defense_deck_index_strategy = StatsConsideredBiggest
 
 
 class Card(object):
@@ -1345,7 +1458,12 @@ class Card(object):
     def to_array(self):
         suit = -1 if self.suit is None else self.suit.value
         colored = -1 if self.colored is None else int(self.colored)
-        rank = -1 if self.rank is None else constants.Rank[self.rank].value
+        if self.rank is None:
+            rank = -1
+        elif self.is_joker():
+            rank = 0
+        else:
+            rank = constants.Rank[self.rank].value
         value = -1 if self.value is None else self.value
         open_ = -1 if self._open is None else int(self._open)
         list_ = [suit, colored, rank, value, open_]
@@ -1398,6 +1516,14 @@ class Deck(object):
         return self._cards
 
     @property
+    def state(self):
+        return self._state
+
+    @property
+    def opponent_deck_index(self):
+        return self._opponent_deck_index
+
+    @property
     def delegate(self):
         return self._cards[0]
 
@@ -1423,8 +1549,8 @@ class Deck(object):
         if self._cards is None:
             cards_flattened = []
         else:
-            cards_generator = (card.to_array() for card in self._cards)
-            cards = numpy.array(cards_generator)
+            cards_list = [card.to_array() for card in self._cards]
+            cards = numpy.array(cards_list)
             cards_flattened = cards.flatten()
         state = -1 if self._state is None else self._state.value
         index = -1 if self._index is None else self._index
@@ -1463,8 +1589,8 @@ class Deck(object):
 
 class Duel(object):
     def __init__(self, player_red, player_black, index, time_started=None,
-                 round_=1, over=False, time_ended=None, winner=None,
-                 loser=None, state=constants.DuelState.UNSTARTED, offense=None,
+                 round_=1, over=False, time_ended=None, winner=None, loser=None,
+                 state=constants.DuelState.UNSTARTED, offense=None,
                  defense=None):
         self.player_red = player_red
         self.player_black = player_black
@@ -1535,14 +1661,15 @@ class Duel(object):
     def end(self, state, winner=None, loser=None):
         self._over = True
         self.time_ended = time.time()
-        if state.value not in range(3, 10):
+        if state.value not in range(3, 11):
             raise ValueError('Invalid DeckState.')
         self._state = state
         self.winner = winner
         self.loser = loser
         if self.winner is None and self.loser is None:
             if state not in (constants.DuelState.DIED,
-                             constants.DuelState.ABORTED_BY_CORRECT_DONE):
+                             constants.DuelState.ABORTED_BY_CORRECT_DONE,
+                             constants.DuelState.ABORTED_BY_WRONG_CHOICE):
                 raise ValueError('Either winner or loser must be supplied.')
         else:
             if winner is None:
@@ -1557,27 +1684,48 @@ class Duel(object):
                     self.loser = self.defense
             self.winner.points += 1
         for player in self.players:
-            player.deck_in_duel.finish()
-            for card in player.deck_in_duel:
-                card.open_up()
-            player.deck_in_duel = None
-            player.recent_action = None
+            if player.deck_in_duel is not None:
+                player.deck_in_duel.finish()
+                for card in player.deck_in_duel:
+                    card.open_up()
+                player.deck_in_duel = None
 
 
 class Pile(object):
     pass
 
 
+class UnopenedPile(collections.UserList):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for card in self:
+            card.open_up()
+
+
+class RedUnopenedPile(UnopenedPile):
+    pass
+
+
+class BlackUnopenedPile(UnopenedPile):
+    pass
+
+
 class RedPile(Pile):
-    def __init__(self):
-        red_joker = Card(None, True, constants.JOKER, None, False)
-        cards = [red_joker]
-        red_suits = (suit for suit in constants.Suit if suit.value % 2 == 0)
-        for suit in red_suits:
-            for rank in constants.Rank:
-                card = Card(suit, True, rank.name, rank.value, False)
-                cards.append(card)
-        self._cards = tuple(cards)
+    def __init__(self, cards=None):
+        if cards is None:
+            red_joker = Card(None, True, constants.JOKER, None, False)
+            cards = [red_joker]
+            red_suits = (suit for suit in constants.Suit if suit.value % 2 == 0)
+            for suit in red_suits:
+                for rank in constants.Rank:
+                    card = Card(suit, True, rank.name, rank.value, False)
+                    cards.append(card)
+            self._cards = tuple(cards)
+        else:
+            self._cards = cards
+
+    def __contains__(self, item):
+        return item in self.cards
 
     @property
     def cards(self):
