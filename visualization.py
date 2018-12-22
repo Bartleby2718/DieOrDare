@@ -8,11 +8,11 @@ data = np.genfromtxt(csv_file_path, delimiter=',',
                      names=['epoch', 'loss', 'episode', 'result', 'reason',
                             'duel', 'time', 'color'])
 
-# TODO: epoch vs loss (logarithmic y-axis)
-plt.plot(data['epoch'], data['loss'], color='r', label='sample')
-plt.ticklabel_format(style='sci', axis='loss', scilimits=(0, 0))
+# epoch vs loss (logarithmic y-axis)
+plt.plot(data['epoch'], data['loss'], color='r', label='loss')
 plt.xlabel('epoch')
 plt.ylabel('loss')
+plt.yscale('log')
 plt.title('epoch vs loss')
 plt.legend()
 plt.show()
