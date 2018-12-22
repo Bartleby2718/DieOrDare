@@ -29,6 +29,11 @@ moving_average_time = moving_average(data['time'], window)
 plt.plot(data['epoch'], data['time'], color='r', label='time elapsed')
 plt.plot(data['epoch'][window - 1:], moving_average_time, color='b',
          label='{}-epoch mov. avg.'.format(window))
+mean = np.mean(data['time'])
+epoch_min = min(data['epoch'])
+epoch_max = max(data['epoch'])
+plt.hlines(y=mean, xmin=epoch_min, xmax=epoch_max, colors='g',
+           linestyles='solid', label='cum. avg.')
 plt.xlabel('epoch')
 plt.ylabel('time (seconds)')
 plt.title('epoch vs time')
