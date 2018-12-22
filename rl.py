@@ -198,7 +198,7 @@ class ReinforcementLearningAgent(ComputerPlayer):
             columns = (
                 epoch + 1, loss, n_episodes, win_history[-1], game.result.name,
                 game.duel_index + 1, game_time, self.alias)
-            print(','.join(columns))
+            print(','.join(str(elem) for elem in columns))
             # if sum(win_history[-hsize:]) == hsize:
             #     print("Reached 100%% win rate at epoch: %d" % (epoch,))
             #     break
