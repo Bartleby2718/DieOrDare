@@ -71,8 +71,24 @@ class Plotter(object):
         plt.legend()
         plt.show()
 
+    def plot_epoch_vs_duel(self, window):
+        """plot duel against epoch"""
+        plt.plot(self.epoch, self.duel, color='r', label='number of duels')
+        moving_average_duels = self.moving_average(self.duel, window)
+        plt.plot(self.epoch[window - 1:], moving_average_duels, color='b',
+                 label='{}-epoch mov. avg.'.format(window))
+        mean = np.mean(self.duel)
+        epoch_min = min(self.epoch)
+        epoch_max = max(self.epoch)
+        plt.hlines(y=mean, xmin=epoch_min, xmax=epoch_max, colors='g',
+                   linestyles='solid', label='cum. avg.', zorder=10)
+        plt.xlabel('epoch')
+        plt.ylabel('duel')
+        plt.title('epoch vs duel')
+        plt.legend()
+        plt.show()
 
-# TODO: epoch vs duel
+
 # TODO: loss vs result
 # TODO: loss vs reason
 # TODO: loss vs duel
@@ -87,3 +103,4 @@ if __name__ == '__main__':
     plotter.plot_epoch_vs_loss(logarithmic_scale=True)
     plotter.plot_epoch_vs_time(window=20)
     plotter.plot_epoch_vs_episode(window=20)
+    plotter.plot_epoch_vs_duel(window=20)
