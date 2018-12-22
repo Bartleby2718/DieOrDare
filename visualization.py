@@ -49,7 +49,22 @@ plt.title('epoch vs time')
 plt.legend()
 plt.show()
 
-# TODO: epoch vs episode
+# epoch vs episode
+moving_average_episodes = moving_average(episode, window)
+plt.plot(epoch, episode, color='r', label='number of episodes')
+plt.plot(epoch[window - 1:], moving_average_episodes, color='b',
+         label='{}-epoch mov. avg.'.format(window))
+mean = np.mean(episode)
+epoch_min = min(epoch)
+epoch_max = max(epoch)
+plt.hlines(y=mean, xmin=epoch_min, xmax=epoch_max, colors='g',
+           linestyles='solid', label='cum. avg.')
+plt.xlabel('epoch')
+plt.ylabel('episode')
+plt.title('epoch vs episode')
+plt.legend()
+plt.show()
+
 # TODO: epoch vs duel
 # TODO: loss vs result
 # TODO: loss vs reason
