@@ -14,8 +14,17 @@ data = np.genfromtxt(csv_file_path, delimiter=',',
                      names=['epoch', 'loss', 'episode', 'result', 'reason',
                             'duel', 'time', 'color'])
 
+epoch = data['epoch']
+loss = data['loss']
+episode = data['episode']
+result = data['result']
+reason = data['reason']
+duel = data['duel']
+time = data['time']
+color = data['color']
+
 # epoch vs loss (logarithmic y-axis)
-plt.plot(data['epoch'], data['loss'], color='r', label='loss')
+plt.plot(epoch, loss, color='r', label='loss')
 plt.xlabel('epoch')
 plt.ylabel('loss')
 plt.yscale('log')
@@ -23,15 +32,15 @@ plt.title('epoch vs loss')
 plt.legend()
 plt.show()
 
-# TODO: epoch vs time
+# epoch vs time
 window = 20
-moving_average_time = moving_average(data['time'], window)
-plt.plot(data['epoch'], data['time'], color='r', label='time elapsed')
-plt.plot(data['epoch'][window - 1:], moving_average_time, color='b',
+moving_average_time = moving_average(time, window)
+plt.plot(epoch, time, color='r', label='time elapsed')
+plt.plot(epoch[window - 1:], moving_average_time, color='b',
          label='{}-epoch mov. avg.'.format(window))
-mean = np.mean(data['time'])
-epoch_min = min(data['epoch'])
-epoch_max = max(data['epoch'])
+mean = np.mean(time)
+epoch_min = min(epoch)
+epoch_max = max(epoch)
 plt.hlines(y=mean, xmin=epoch_min, xmax=epoch_max, colors='g',
            linestyles='solid', label='cum. avg.')
 plt.xlabel('epoch')
