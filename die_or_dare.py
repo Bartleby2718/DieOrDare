@@ -968,10 +968,7 @@ class Game(object):
         self.time_ended = time.time()
         self.winner = winner
         self.loser = loser
-        if self.winner is None and self.loser is None:
-            if result not in [constants.GameResult.ABORTED_BY_WRONG_CHOICE]:
-                raise ValueError('Either winner or loser must be supplied.')
-        elif self.winner is None:
+        if self.winner is None:
             if self.loser == self.player_black:
                 self.winner = self.player_red
             else:

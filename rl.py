@@ -375,6 +375,8 @@ class DoDGameRL(Game):
         super()._end(result, winner, loser)
         if isinstance(self.winner, ReinforcementLearningAgent):
             self.winner.total_reward += 1
+        if isinstance(self.loser, ReinforcementLearningAgent):
+            self.loser.total_reward -= 1
 
     def observe(self, by_red):
         if by_red:
@@ -473,9 +475,9 @@ class DoDGameRL(Game):
         for player in self.players:
             if player.recent_action not in player.valid_actions(round_):
                 if isinstance(player, ReinforcementLearningAgent):
-                    player.total_reward -= 1
                     duel.end(constants.DuelState.ABORTED_BY_WRONG_CHOICE)
-                    self._end(constants.GameResult.ABORTED_BY_WRONG_CHOICE)
+                    self._end(constants.GameResult.ABORTED_BY_WRONG_CHOICE,
+                              loser=player)
                     message = '{} made a wrong choice, so Duel #{} is aborted.'.format(
                         player.name, duel.index + 1)
                     message += '\nGame aborted because a wrong choice was made.'
@@ -565,9 +567,9 @@ class DoDGameRL(Game):
                 raise AssertionError('Choose an undisclosed deck.')
         except (IndexError, AssertionError) as e:
             if isinstance(offense, ReinforcementLearningAgent):
-                offense.total_reward -= 1
                 duel.end(constants.DuelState.ABORTED_BY_WRONG_CHOICE)
-                self._end(constants.GameResult.ABORTED_BY_WRONG_CHOICE)
+                self._end(constants.GameResult.ABORTED_BY_WRONG_CHOICE,
+                          loser=offense)
                 message = '{} made a wrong choice, so Duel #{} is aborted.'.format(
                     offense.name, duel.index + 1)
                 message += '\nGame aborted because a wrong choice was made.'
@@ -594,9 +596,9 @@ class DoDGameRL(Game):
                 raise AssertionError('Choose an undisclosed deck.')
         except (IndexError, AssertionError) as e:
             if isinstance(offense, ReinforcementLearningAgent):
-                offense.total_reward -= 1
                 duel.end(constants.DuelState.ABORTED_BY_WRONG_CHOICE)
-                self._end(constants.GameResult.ABORTED_BY_WRONG_CHOICE)
+                self._end(constants.GameResult.ABORTED_BY_WRONG_CHOICE,
+                          loser=offense)
                 message = '{} made a wrong choice, so Duel #{} is aborted.'.format(
                     offense.name, duel.index + 1)
                 message += '\nGame aborted because a wrong choice was made.'
