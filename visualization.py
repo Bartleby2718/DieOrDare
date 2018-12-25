@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import numpy as np
 import os
 
@@ -88,13 +89,36 @@ class Plotter(object):
         plt.legend()
         plt.show()
 
+    def plot_epoch_vs_winning_percentage(self, window):
+        """plot winning percentage against epoch"""
+        percent_formatter = mticker.PercentFormatter(1.0)
+        fig, ax = plt.subplots()
+        ax.yaxis.set_major_formatter(percent_formatter)
+        plt.minorticks_on()
 
-# TODO: loss vs result
-# TODO: loss vs reason
-# TODO: loss vs duel
-# TODO: loss vs color
+        games_won = np.cumsum(self.result)
+        winning_percentage = np.true_divide(games_won, self.epoch)
+        plt.plot(self.epoch, winning_percentage, color='r',
+                 label='cum. mov. avg.')
+
+        winning_percentage_windowed = self.moving_average(self.result, window)
+        plt.plot(self.epoch[window - 1:], winning_percentage_windowed,
+                 color='b', label='{}-epoch mov. avg.'.format(window))
+
+        mean = np.mean(self.result)
+        epoch_min = min(self.epoch)
+        epoch_max = max(self.epoch)
+        plt.hlines(y=mean, xmin=epoch_min, xmax=epoch_max, colors='g',
+                   linestyles='solid', label='avg.', zorder=10)
+        plt.xlabel('epoch')
+        plt.ylabel('winning percentage')
+        plt.title('epoch vs winning percentage')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+
 # TODO: duel vs time
-# TODO: epoch vs winning percentage
 
 if __name__ == '__main__':
     current_directory = os.path.dirname(os.path.realpath(__file__))
@@ -104,3 +128,4 @@ if __name__ == '__main__':
     plotter.plot_epoch_vs_time(window=20)
     plotter.plot_epoch_vs_episode(window=20)
     plotter.plot_epoch_vs_duel(window=20)
+    plotter.plot_epoch_vs_winning_percentage(window=100)
