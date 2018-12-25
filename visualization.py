@@ -1,3 +1,5 @@
+import constants
+import itertools
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
@@ -6,9 +8,9 @@ import os
 
 class Plotter(object):
     def __init__(self, path_to_csv_file):
-        data = np.genfromtxt(path_to_csv_file, delimiter=',',
-                             names=['epoch', 'loss', 'episode', 'result',
-                                    'reason', 'duel', 'time', 'color'])
+        data = np.genfromtxt(path_to_csv_file, delimiter=',', dtype=[
+            ('epoch', 'i'), ('loss', 'f'), ('episode', 'i'), ('result', 'i'),
+            ('reason', 'i'), ('duel', 'i'), ('time', 'f'), ('color', 'i')], )
         self.epoch = data['epoch']
         self.loss = data['loss']
         self.episode = data['episode']
@@ -17,6 +19,7 @@ class Plotter(object):
         self.duel = data['duel']
         self.time = data['time']
         self.color = data['color']
+        self.data_size = len(self.epoch)
 
     @staticmethod
     def moving_average(array_like, window):
@@ -89,7 +92,44 @@ class Plotter(object):
         plt.legend()
         plt.show()
 
-    def plot_epoch_vs_winning_percentage(self, window):
+    def plot_epoch_vs_winning_percentage_cumulative(self):
+        """plot winning percentage against epoch"""
+        percent_formatter = mticker.PercentFormatter(1.0)
+        fig, ax = plt.subplots()
+        ax.yaxis.set_major_formatter(percent_formatter)
+        plt.minorticks_on()
+
+        games_won = np.cumsum(self.result)
+        winning_percentage = games_won / self.epoch
+        plt.plot(self.epoch, winning_percentage, color='k', label='won')
+
+        results = (0, 1)  # 0: lost, 1: won
+        num_results = len(results)
+        reasons = {
+            constants.GameResult.ABORTED_BY_WRONG_CHOICE.value: 0,
+            constants.GameResult.FINISHED.value: 1,
+            constants.GameResult.DONE.value: 2
+        }
+        num_reasons = len(reasons)
+        table = np.zeros((num_results, num_reasons, self.data_size))
+        for index, (result, reason) in enumerate(zip(self.result, self.reason)):
+            table[result][reasons.get(reason)][index] = 1
+        for i, j in itertools.product(results, reasons.values()):
+            table[i][j] = np.cumsum(table[i][j]) / self.epoch
+        plt.plot(self.epoch, table[0][0], color='r', label='lost/aborted')
+        plt.plot(self.epoch, table[0][1], color='g', label='lost/finished')
+        plt.plot(self.epoch, table[0][2], color='b', label='lost/done')
+        plt.plot(self.epoch, table[1][0], color='c', label='won/aborted')
+        plt.plot(self.epoch, table[1][1], color='m', label='won/finished')
+        plt.plot(self.epoch, table[1][2], color='y', label='won/done')
+        plt.xlabel('epoch')
+        plt.ylabel('percentage')
+        plt.title('percentage by result')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+    def plot_epoch_vs_winning_percentage_moving_average(self, window):
         """plot winning percentage against epoch"""
         percent_formatter = mticker.PercentFormatter(1.0)
         fig, ax = plt.subplots()
@@ -128,4 +168,4 @@ if __name__ == '__main__':
     plotter.plot_epoch_vs_time(window=20)
     plotter.plot_epoch_vs_episode(window=20)
     plotter.plot_epoch_vs_duel(window=20)
-    plotter.plot_epoch_vs_winning_percentage(window=100)
+    plotter.plot_epoch_vs_winning_percentage_cumulative()
