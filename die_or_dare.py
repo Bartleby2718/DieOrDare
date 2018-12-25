@@ -487,11 +487,9 @@ class SimpleActionChoiceStrategy(ActionChoiceStrategy):
             deck_in_duel_me = next(
                 (deck for deck in decks_me if deck.is_in_duel()))
             deck_in_duel_opponent = next(
-                (deck for deck in decks_opponent if
-                 deck.is_in_duel()))
+                (deck for deck in decks_opponent if deck.is_in_duel()))
             sum_me = sum(card._value for card in deck_in_duel_me)
-            sum_opponent = sum(
-                card._value for card in deck_in_duel_opponent)
+            sum_opponent = sum(card._value for card in deck_in_duel_opponent)
             if sum_me == sum_opponent:
                 return constants.Action.DRAW
             else:
@@ -1258,7 +1256,7 @@ class ComputerPlayer(Player):
                 deck for deck in decks_me if deck.is_in_duel())
         current_sum_me = sum(
             card._value for card in deck_in_duel_me if card.open_)
-        delegate_value_me = deck_in_duel_me.delegate._value
+        delegate_value_me = deck_in_duel_me.delegate_value
         hidden_cards_me = []
         for deck in decks_me:
             for card in deck:
@@ -1275,7 +1273,7 @@ class ComputerPlayer(Player):
         current_sum_opponent = sum(
             card._value for card in deck_in_duel_opponent if
             card.open_)
-        delegate_value_opponent = deck_in_duel_opponent.delegate._value
+        delegate_value_opponent = deck_in_duel_opponent.delegate_value
         hidden_cards_opponent = []
 
         if is_opponent_red:
@@ -1496,6 +1494,10 @@ class Deck(object):
     @property
     def delegate(self):
         return self._cards[0]
+
+    @property
+    def delegate_value(self):
+        return self.delegate._value
 
     def is_undisclosed(self):
         return self._state == constants.DeckState.UNDISCLOSED

@@ -211,14 +211,15 @@ class ReinforcementLearningAgent(ComputerPlayer):
 
     def decide_offense_deck_index(self, decks_opponent, points_opponent,
                                   num_shout_die_opponent, prev_envstate=None):
-        # If there's only one undisclosed value and that's a delegate, choose it
         undisclosed_values = ComputerPlayer.undisclosed_values(self.decks)
-        delegate_values = (deck.delegate.value for deck in self.decks)
         if len(undisclosed_values) == 1:
+            # TODO: if the undisclosed value is not among delegates
+            # TODO: but guaranteed to be in some deck, choose it.
             undisclosed_value = undisclosed_values[0]
-            if undisclosed_value in delegate_values:
-                deck = AnyOffenseDeck.apply(self.decks)
-                return deck.index
+            delegate_values_to_index = {deck.delegate_value: deck.index for deck
+                                        in self.decks}
+            if undisclosed_value in delegate_values_to_index:
+                return delegate_values_to_index.get(undisclosed_value)
         elif numpy.random.rand() > self.epsilon:
             deck_index = numpy.argmax(self.intelligence.predict(prev_envstate))
             if deck_index in range(constants.DECK_PER_PILE):
@@ -230,20 +231,19 @@ class ReinforcementLearningAgent(ComputerPlayer):
 
     def decide_defense_deck_index(self, decks_opponent, points_opponent,
                                   num_shout_die_opponent, prev_envstate=None):
-        # If there's only one undisclosed value and that's a delegate, ignore it
         undisclosed_values = ComputerPlayer.undisclosed_values(decks_opponent)
-        undisclosed_delegate_values = set(deck.delegate.value for deck in
-                                          decks_opponent if
-                                          deck.is_undisclosed())
         if len(undisclosed_values) == 1:
             undisclosed_value = undisclosed_values[0]
-            if len(undisclosed_delegate_values) == 1:
-                deck = AnyDefenseDeck.apply(decks_opponent)
-            else:
+            # TODO: if the undisclosed value is not among delegates
+            # TODO: but guaranteed to be in some deck, ignore it as well.
+            undisclosed_delegate_values = set(deck.delegate_value for deck in
+                                              decks_opponent if
+                                              deck.is_undisclosed())
+            if len(undisclosed_delegate_values) > 1:
                 candidates = [deck for deck in decks_opponent if
-                              deck.delegate.value != undisclosed_value]
+                              deck.delegate_value != undisclosed_value]
                 deck = SmallestDefenseDeck.apply(candidates)
-            return deck.index
+                return deck.index
         elif numpy.random.rand() > self.epsilon:
             deck_index = numpy.argmax(self.intelligence.predict(prev_envstate))
             deck_index -= constants.DECK_PER_PILE
@@ -254,23 +254,22 @@ class ReinforcementLearningAgent(ComputerPlayer):
         deck = AnyDefenseDeck.apply(decks_opponent)
         return deck.index
 
-    def shout(self, decks_opponent, points_opponent,
-              num_shout_die_opponent, round_, in_turn, duel_index,
-              prev_envstate=None):
+    def shout(self, decks_opponent, points_opponent, num_shout_die_opponent,
+              round_, in_turn, duel_index, prev_envstate=None):
         # TODO: 해당 듀얼을 invalidate 할 필요가 없고 승리 확률이 100%면 die 금지
         # TODO: 상대는 done 이고 die 가 남으면 해당 듀얼을 die 로 invalidate
-        valid_actions = self.valid_actions(round_)
         if not ComputerPlayer.undisclosed_values(self.decks):
             action = constants.Action.DONE
             return Shout(self, action)
+        valid_actions = self.valid_actions(round_)
         if duel_index < 4:
             valid_actions.remove(constants.Action.DONE)
         if round_ == 3:
             # TODO: round 2여도 확률 100%면
-            sum_offense = sum(card.value for card in self.deck_in_duel)
+            sum_offense = sum(card._value for card in self.deck_in_duel)
             deck_in_duel_opponent = [deck for deck in decks_opponent
                                      if deck.is_in_duel()][0]
-            sum_defense = sum(card.value for card in deck_in_duel_opponent)
+            sum_defense = sum(card._value for card in deck_in_duel_opponent)
             if sum_offense == sum_defense:
                 action = constants.Action.DRAW
             else:
@@ -484,8 +483,8 @@ class DoDGameRL(Game):
             # do nothing and move on to next round to open next cards
             return message, duration
         elif round_ == 3:
-            sum_offense = sum(card.value for card in duel.offense.deck_in_duel)
-            sum_defense = sum(card.value for card in duel.defense.deck_in_duel)
+            sum_offense = sum(card._value for card in duel.offense.deck_in_duel)
+            sum_defense = sum(card._value for card in duel.defense.deck_in_duel)
             if sum_offense > sum_defense:
                 duel.end(constants.DuelState.FINISHED, winner=duel.offense)
                 message = '{0} has a greater sum, so {0} gets a point. Duel #{1} ended.'.format(
