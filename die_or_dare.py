@@ -2,7 +2,6 @@ import abc
 import argparse
 import collections
 import constants
-import copy
 import datetime
 import functools
 import itertools
@@ -153,8 +152,8 @@ class Thirteen(JokerValueStrategy):
     def apply(cards):
         """Assign 13."""
         for card in cards:
-            if card.is_joker():
-                card.value = max(rank.value for rank in constants.Rank)
+            if card._is_joker():
+                card._value = max(rank.value for rank in constants.Rank)
                 break
 
 
@@ -162,11 +161,11 @@ class SameAsMax(JokerValueStrategy):
     @staticmethod
     def apply(cards):
         """Assign the biggest value that is already in the deck."""
-        if any(card.is_joker() for card in cards):
-            joker = next(card for card in cards if card.is_joker())
+        if any(card._is_joker() for card in cards):
+            joker = next(card for card in cards if card._is_joker())
             cards_without_joker = [card for card in cards if card != joker]
-            biggest = max(cards_without_joker, key=lambda x: x.value)
-            joker.value = biggest.value
+            biggest = max(cards_without_joker, key=lambda x: x._value)
+            joker._value = biggest._value
 
 
 class RandomNumber(JokerValueStrategy):
@@ -174,9 +173,9 @@ class RandomNumber(JokerValueStrategy):
     def apply(cards):
         """Assign a random number."""
         for card in cards:
-            if card.is_joker():
+            if card._is_joker():
                 values = [rank.value for rank in constants.Rank]
-                card.value = random.choice(values)
+                card._value = random.choice(values)
                 break
 
 
@@ -184,27 +183,27 @@ class NextBiggest(JokerValueStrategy):
     @staticmethod
     def apply(cards):
         """Assign the next biggest value that is not yet in the deck."""
-        if any(card.is_joker() for card in cards):
-            joker = next(card for card in cards if card.is_joker())
+        if any(card._is_joker() for card in cards):
+            joker = next(card for card in cards if card._is_joker())
             cards_without_joker = [card for card in cards if card != joker]
-            biggest = max(cards_without_joker, key=lambda x: x.value)
-            smallest = min(cards_without_joker, key=lambda x: x.value)
-            if biggest.value == 1:
-                joker.value = 1
-            elif biggest.value == 2:
-                joker.value = 3 - smallest.value
+            biggest = max(cards_without_joker, key=lambda x: x._value)
+            smallest = min(cards_without_joker, key=lambda x: x._value)
+            if biggest._value == 1:
+                joker._value = 1
+            elif biggest._value == 2:
+                joker._value = 3 - smallest._value
             else:
-                if smallest.value == biggest.value - 1:
-                    joker.value = biggest.value - 2
+                if smallest._value == biggest._value - 1:
+                    joker._value = biggest._value - 2
                 else:
-                    joker.value = biggest.value - 1
+                    joker._value = biggest._value - 1
 
 
 class JokerPositionStrategy(abc.ABC):
     @staticmethod
     def biggest(cards):
         """Return the card with the biggest value"""
-        return max(cards, key=lambda x: x.value)  # may or may not be a joker
+        return max(cards, key=lambda x: x._value)  # may or may not be a joker
 
     @staticmethod
     def to_delegate(cards, index):
@@ -229,15 +228,15 @@ class JokerFirst(JokerPositionStrategy):
         joker_index = -1
         for i in range(len(cards)):
             card = cards[i]
-            if card.is_joker():
+            if card._is_joker():
                 joker_index = i
         if joker_index > -1:
             joker = cards[joker_index]
             cards_without_joker = [card for card in cards if
-                                   not card.is_joker()]
+                                   not card._is_joker()]
             bigger = cls.biggest(cards_without_joker)
             bigger_index = cards.index(bigger)
-            if joker.value >= bigger.value:
+            if joker._value >= bigger._value:
                 cls.to_delegate(cards, joker_index)
             else:
                 cls.to_delegate(cards, bigger_index)
@@ -251,14 +250,14 @@ class JokerLast(JokerPositionStrategy):
         """Hide the joker as long as possible."""
         joker_index = -1
         for i in range(len(cards)):
-            if cards[i].is_joker():
+            if cards[i]._is_joker():
                 joker_index = i
         if joker_index > -1:
             joker = cards[joker_index]
             cards_without_joker = [card for card in cards if
-                                   not card.is_joker()]
+                                   not card._is_joker()]
             bigger = cls.biggest(cards_without_joker)
-            if joker.value > bigger.value:
+            if joker._value > bigger._value:
                 cls.to_delegate(cards, joker_index)
             else:
                 bigger_index = cards.index(bigger)
@@ -282,13 +281,13 @@ class JokerNotFirst(JokerPositionStrategy):
         joker_index = -1
         for i in range(len(cards)):
             card = cards[i]
-            if card.is_joker():
+            if card._is_joker():
                 joker_index = i
         if joker_index > -1:
             joker = cards[joker_index]
             cards_without_joker = [card for card in cards if card != joker]
             bigger = cls.biggest(cards_without_joker)
-            if joker.value > bigger.value:
+            if joker._value > bigger._value:
                 cls.to_delegate(cards, joker_index)
             else:
                 bigger_index = cards.index(bigger)
@@ -490,9 +489,9 @@ class SimpleActionChoiceStrategy(ActionChoiceStrategy):
             deck_in_duel_opponent = next(
                 (deck for deck in decks_opponent if
                  deck.is_in_duel()))
-            sum_me = sum(card.value for card in deck_in_duel_me)
+            sum_me = sum(card._value for card in deck_in_duel_me)
             sum_opponent = sum(
-                card.value for card in deck_in_duel_opponent)
+                card._value for card in deck_in_duel_opponent)
             if sum_me == sum_opponent:
                 return constants.Action.DRAW
             else:
@@ -763,10 +762,9 @@ class Game(object):
             for player in duel.players:
                 in_turn = player == duel.offense
                 opponent = duel.defense if in_turn else duel.offense
-                decks_opponent, points_opponent, num_shout_die_opponent, deck_in_duel_index = opponent.public_information()
-                shout = player.shout(decks_opponent, points_opponent,
-                                     num_shout_die_opponent, round_,
-                                     in_turn, duel.index, prev_envstate)
+                shout = player.shout(opponent.decks, opponent.points,
+                                     opponent.num_shout_die, round_, in_turn,
+                                     duel.index, prev_envstate)
                 action = shout.action
                 shout = Shout(player, action)
                 shouts.append(shout)
@@ -866,8 +864,8 @@ class Game(object):
             # do nothing and move on to next round to open next cards
             return message, duration
         elif round_ == 3:
-            sum_offense = sum(card.value for card in duel.offense.deck_in_duel)
-            sum_defense = sum(card.value for card in duel.defense.deck_in_duel)
+            sum_offense = sum(card._value for card in duel.offense.deck_in_duel)
+            sum_defense = sum(card._value for card in duel.defense.deck_in_duel)
             if sum_offense > sum_defense:
                 duel.end(constants.DuelState.FINISHED, winner=duel.offense)
                 message = '{0} has a greater sum, so {0} gets a point. Duel #{1} ended.'.format(
@@ -919,33 +917,29 @@ class Game(object):
     def _decide_offense_deck(self, prev_envstate=None):
         duel = self.duel_ongoing
         offense, defense = duel.players
-        defense_decks, defense_points, defense_num_shout_die, garbage = defense.public_information()
         # Skip choosing deck in the last duel
         if self.duel_index == constants.DECK_PER_PILE - 1:
             offense_undisclosed_decks = offense.undisclosed_decks()
             deck = offense_undisclosed_decks[0]
             return OffenseDeckIndexInput(deck.index)
         else:
-            deck_index = offense.decide_offense_deck_index(defense_decks,
-                                                           defense_points,
-                                                           defense_num_shout_die,
-                                                           prev_envstate)
+            deck_index = offense.decide_offense_deck_index(
+                defense.decks, defense.points, defense.num_shout_die,
+                prev_envstate)
             return OffenseDeckIndexInput(deck_index)
 
     def _decide_defense_deck(self, prev_envstate=None):
         duel = self.duel_ongoing
         offense, defense = duel.players
-        defense_decks, defense_points, defense_num_shout_die, deck_in_duel_index = defense.public_information()
         # Skip choosing deck in the last duel
         if self.duel_index == constants.DECK_PER_PILE - 1:
             defense_undisclosed_decks = defense.undisclosed_decks()
             deck = defense_undisclosed_decks[0]
             return DefenseDeckIndexInput(deck.index)
         else:
-            deck_index = offense.decide_defense_deck_index(defense_decks,
-                                                           defense_points,
-                                                           defense_num_shout_die,
-                                                           prev_envstate)
+            deck_index = offense.decide_defense_deck_index(
+                defense.decks, defense.points, defense.num_shout_die,
+                prev_envstate)
             return DefenseDeckIndexInput(deck_index)
 
     def _end(self, result, winner=None, loser=None):
@@ -974,17 +968,26 @@ class Game(object):
     def to_json(self):
         return jsonpickle.encode(self)
 
-    def to_array(self):
-        red = list(self.player_red.to_array())
-        black = list(self.player_black.to_array())
+    def to_array(self, by_red=None):
+        color = -1 if by_red is None else 0 if by_red else 1
+        if by_red is None:  # observe both players' data
+            red = list(self.player_red.to_array(public_only=False))
+            black = list(self.player_black.to_array(public_only=False))
+        elif by_red:  # observe from red's point of view
+            red = list(self.player_red.to_array(public_only=False))
+            black = list(self.player_black.to_array(public_only=True))
+        else:  # observe from black's point of view
+            red = list(self.player_red.to_array(public_only=True))
+            black = list(self.player_black.to_array(public_only=False))
         if self.winner is None:
             winner = -1
         else:
             winner = int(self.winner == self.player_red)
         result = -1 if self.result is None else self.result.value
         duel_index = -1 if self.duel_index is None else self.duel_index
-        common = [winner, result, duel_index]
-        return numpy.array(red + black + common)
+        common = [color, winner, result, duel_index]
+        observation = numpy.array(red + black + common)
+        return observation.reshape((1, -1))
 
 
 class Player(object):
@@ -1019,26 +1022,6 @@ class Player(object):
     def deck_in_duel_index(self):
         return self._deck_in_duel_index
 
-    def decks_public(self):
-        copied_decks = []
-        for deck in self.decks:
-            copied_cards = []
-            for card in deck:
-                if card.is_open():
-                    copied_card = copy.copy(card)
-                else:
-                    copied_card = Card(None, None, None, None, False)
-                copied_cards.append(copied_card)
-            copied_deck = Deck(copied_cards, deck.state, deck.index,
-                               deck.opponent_deck_index,
-                               deck.card_to_open_index)
-            copied_decks.append(copied_deck)
-        return copied_decks
-
-    def public_information(self):
-        decks = self.decks_public()
-        return decks, self.points, self.num_shout_die, self.deck_in_duel_index
-
     def valid_actions(self, round_):
         actions = [constants.Action.DONE]
         if round_ == 1:
@@ -1063,7 +1046,7 @@ class Player(object):
     def revealed_joker(self):
         for deck in self.decks:
             for card in deck:
-                if card.is_open() and card.is_joker():
+                if card.open_ and card._is_joker():
                     return True
         else:
             return False
@@ -1092,7 +1075,7 @@ class Player(object):
             self.joker_value_strategy.apply(cards)
             self.joker_position_strategy.apply(cards)
             decks_previous.append(tuple(cards))
-        decks_previous.sort(key=lambda x: x[0].value)
+        decks_previous.sort(key=lambda x: x[0]._value)
         decks = []
         for index, cards in enumerate(decks_previous):
             deck = Deck(cards, index=index)
@@ -1144,8 +1127,8 @@ class Player(object):
         num_all_values = len(constants.Rank)
         return num_disclosed_values == num_all_values
 
-    def to_array(self):
-        decks = [deck.to_array() for deck in self.decks]
+    def to_array(self, public_only=False):
+        decks = [deck.to_array(public_only=public_only) for deck in self.decks]
         decks = list(itertools.chain.from_iterable(decks))
         points = -1 if self.points is None else self.points
         num_shout_die = -1 if self.num_shout_die is None else self.num_shout_die
@@ -1195,9 +1178,8 @@ class HumanPlayer(Player):
         deck = deck_input.value
         return deck.index
 
-    def shout(self, decks_opponent, points_opponent,
-              num_shout_die_opponent, round_, in_turn, duel_index,
-              prev_envstate=None):
+    def shout(self, decks_opponent, points_opponent, num_shout_die_opponent,
+              round_, in_turn, duel_index, prev_envstate=None):
         allowed_actions = self.valid_actions(round_)
         keys_settings_in_list = ['{}: \'{}\''.format(action.name, key) for
                                  action, key in self.key_settings.items() if
@@ -1275,25 +1257,25 @@ class ComputerPlayer(Player):
             deck_in_duel_me = next(
                 deck for deck in decks_me if deck.is_in_duel())
         current_sum_me = sum(
-            card.value for card in deck_in_duel_me if card.is_open())
-        delegate_value_me = deck_in_duel_me.delegate.value
+            card._value for card in deck_in_duel_me if card.open_)
+        delegate_value_me = deck_in_duel_me.delegate._value
         hidden_cards_me = []
         for deck in decks_me:
             for card in deck:
-                if not card.is_open():
-                    if card.is_joker() or card.value <= delegate_value_me:
+                if not card.open_:
+                    if card._is_joker() or card._value <= delegate_value_me:
                         hidden_cards_me.append(card)
         # get the number of cards to open
-        num_opened = sum(1 for card in deck_in_duel_me if card.is_open())
+        num_opened = sum(1 for card in deck_in_duel_me if card.open_)
         num_to_open = 3 - num_opened
         # get the opponent's hidden cards
         if deck_in_duel_opponent is None:
             deck_in_duel_opponent = next(
                 deck for deck in decks_opponent if deck.is_in_duel())
         current_sum_opponent = sum(
-            card.value for card in deck_in_duel_opponent if
-            card.is_open())
-        delegate_value_opponent = deck_in_duel_opponent.delegate.value
+            card._value for card in deck_in_duel_opponent if
+            card.open_)
+        delegate_value_opponent = deck_in_duel_opponent.delegate._value
         hidden_cards_opponent = []
 
         if is_opponent_red:
@@ -1304,13 +1286,13 @@ class ComputerPlayer(Player):
             unopened_pile = BlackUnopenedPile(entire_pile.cards)
         for deck in decks_opponent:
             for card in deck:
-                if card.is_open():
+                if card.open_:
                     try:
                         unopened_pile.remove(card)
                     except ValueError:
                         pass
         for card in unopened_pile:
-            if card.is_joker() or card.value <= delegate_value_opponent:
+            if card._is_joker() or card._value <= delegate_value_opponent:
                 hidden_cards_opponent.append(card)
         # calculate the odds
         num_win, num_lose, num_draw = 0, 0, 0
@@ -1323,19 +1305,19 @@ class ComputerPlayer(Player):
                 # get my sum
                 sum_me = current_sum_me
                 for card in cards_me:
-                    if card.is_joker():
+                    if card._is_joker():
                         sum_me += guess_joker_value(delegate_value_me,
                                                     joker_value_strategy_me)
                     else:
-                        sum_me += card.value
+                        sum_me += card._value
                 # get opponent's sum
                 sum_opponent = current_sum_opponent
                 for card in cards_opponent:
-                    if card.is_joker():
+                    if card._is_joker():
                         sum_opponent += guess_joker_value(
                             delegate_value_opponent)
                     else:
-                        sum_opponent += card.value
+                        sum_opponent += card._value
                 # compare
                 if sum_me > sum_opponent:
                     num_win += 1
@@ -1362,13 +1344,12 @@ class ComputerPlayer(Player):
         for deck in decks:
             if not deck.is_undisclosed():
                 for card in deck.cards:
-                    if card.is_open():
-                        values.add(card.value)
+                    if card.open_:
+                        values.add(card._value)
         return tuple(values)
 
-    def shout(self, decks_opponent, points_opponent,
-              num_shout_die_opponent, round_, in_turn, duel_index,
-              prev_envstate=None):
+    def shout(self, decks_opponent, points_opponent, num_shout_die_opponent,
+              round_, in_turn, duel_index, prev_envstate=None):
         strategy = self.action_choice_strategy
         is_opponent_red = in_turn ^ (duel_index % 2 == 0)
         action = strategy.apply(round_, in_turn, self.decks, decks_opponent,
@@ -1398,58 +1379,65 @@ class AntiDie(ComputerPlayer):
 
 class Card(object):
     def __init__(self, suit, colored, rank, value=None, open_=False):
-        self.suit = suit
-        self.colored = colored
-        self.rank = rank
-        self.value = value
-        self._open = open_
+        self._suit = suit
+        self._colored = colored
+        self._rank = rank
+        self._value = value
+        self.open_ = open_
 
     def __eq__(self, other):
-        same_suit = self.suit == other.suit
-        same_color = self.colored == other.colored
-        same_rank = self.rank == other.rank
+        same_suit = self._suit == other._suit
+        same_color = self._colored == other._colored
+        same_rank = self._rank == other._rank
         return same_suit and same_color and same_rank
 
     def __repr__(self):
-        if self.is_joker():
-            colored = 'Colored' if self.colored else 'Black'
-            rank = self.rank
+        if self._is_joker():
+            colored = 'Colored' if self._colored else 'Black'
+            rank = self._rank
             representation = '{} {}'.format(colored, rank)
         else:
-            representation = '{} of {}'.format(self.rank, self.suit.name)
-        if not self._open:
+            representation = '{} of {}'.format(self._rank, self._suit.name)
+        if not self.open_:
             representation = '({})'.format(representation)
         return representation
 
     def __str__(self):
-        if self.is_open():
-            initial = 'J' if self.is_joker() else self.suit.name[0]
-            return '{} {}'.format(self.value, initial)
+        if self.open_:
+            initial = 'J' if self._is_joker() else self._suit.name[0]
+            return '{} {}'.format(self._value, initial)
         else:
             return '?'
 
     def open_up(self):
-        self._open = True
+        self.open_ = True
 
-    def is_open(self):
-        return self._open
+    def _is_joker(self):
+        return self._rank == constants.JOKER
 
-    def is_joker(self):
-        return self.rank == constants.JOKER
-
-    def to_array(self):
-        suit = -1 if self.suit is None else self.suit.value
-        colored = -1 if self.colored is None else int(self.colored)
-        if self.rank is None:
+    def to_array(self, public_only=False):
+        assert self.open_ is not None
+        if not self.open_ and public_only:
+            suit = -1
+            colored = -1 if self._colored is None else int(self._colored)
             rank = -1
-        elif self.is_joker():
-            rank = 0
+            value = -1
+            open_ = int(self.open_)
+            list_ = [suit, colored, rank, value, open_]
+            return numpy.array(list_)
         else:
-            rank = constants.Rank[self.rank].value
-        value = -1 if self.value is None else self.value
-        open_ = -1 if self._open is None else int(self._open)
-        list_ = [suit, colored, rank, value, open_]
-        return numpy.array(list_)
+            suit = -1 if self._suit is None else self._suit.value
+            colored = -1 if self._colored is None else int(self._colored)
+            if self._rank is None:
+                rank = -1
+            elif self._is_joker():
+                rank = 0
+            else:
+                rank = constants.Rank[self._rank].value
+            value = -1 if self._value is None else self._value
+            open_ = -1 if self.open_ is None else int(self.open_)
+            list_ = [suit, colored, rank, value, open_]
+            return numpy.array(list_)
 
     @classmethod
     def from_array(cls, array):
@@ -1527,11 +1515,12 @@ class Deck(object):
     def finish(self):
         self._state = constants.DeckState.FINISHED
 
-    def to_array(self):
+    def to_array(self, public_only=False):
         if self._cards is None:
             cards_flattened = []
         else:
-            cards_list = [card.to_array() for card in self._cards]
+            cards_list = [card.to_array(public_only=public_only) for card in
+                          self._cards]
             cards = numpy.array(cards_list)
             cards_flattened = cards.flatten()
         state = -1 if self._state is None else self._state.value
@@ -1633,8 +1622,8 @@ class Duel(object):
                 'Either the offense deck or the defense deck must be supplied.')
 
     def is_drawn(self):
-        sum_offense = sum(card.value for card in self.offense.deck_in_duel)
-        sum_defense = sum(card.value for card in self.defense.deck_in_duel)
+        sum_offense = sum(card._value for card in self.offense.deck_in_duel)
+        sum_defense = sum(card._value for card in self.defense.deck_in_duel)
         return sum_offense == sum_defense
 
     def is_over(self):

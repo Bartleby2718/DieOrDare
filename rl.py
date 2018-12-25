@@ -47,7 +47,7 @@ class ReinforcementLearningAgent(ComputerPlayer):
                 pass
         if model is None:
             model = keras.models.Sequential()
-            game_to_array_length = 349  # TODO: programmatically attain this value
+            game_to_array_length = 352  # TODO: programmatically attain this value
             model.add(keras.layers.core.Dense(game_to_array_length,
                                               input_shape=(
                                                   game_to_array_length,)))
@@ -153,8 +153,7 @@ class ReinforcementLearningAgent(ComputerPlayer):
                     if not suppress_output:
                         output_handler.display(game.to_json(), message,
                                                duration)
-                    by_red = self == game.player_red
-                    envstate = game.observe(by_red)
+                    envstate = game.observe(by_red=by_red)
                     reward_after = self.total_reward
                     reward = reward_after - reward_before
 
@@ -379,52 +378,7 @@ class DoDGameRL(Game):
             self.loser.total_reward -= 1
 
     def observe(self, by_red):
-        if by_red:
-            red = list(self.player_red.to_array())
-            black_decks = self.player_black.decks_public()
-            black_points = self.player_black.points
-            black_num_shout_die = self.player_black.num_shout_die
-            black_deck_in_duel_index = self.player_black.deck_in_duel_index
-
-            decks = [deck.to_array() for deck in black_decks]
-            decks = list(itertools.chain.from_iterable(decks))
-            points = -1 if black_points is None else black_points
-            if black_num_shout_die is None:
-                num_shout_die = -1
-            else:
-                num_shout_die = black_num_shout_die
-            if black_deck_in_duel_index is None:
-                deck_in_duel_index = -1
-            else:
-                deck_in_duel_index = black_deck_in_duel_index
-            others = [points, num_shout_die, deck_in_duel_index]
-            black = decks + others
-            common = [self.duel_index % 2]
-            result = numpy.array([*red, *black, *common])
-            return result.reshape((1, -1))
-        else:
-            black = list(self.player_black.to_array())
-            red_decks = self.player_red.decks_public()
-            red_points = self.player_red.points
-            red_num_shout_die = self.player_red.num_shout_die
-            red_deck_in_duel_index = self.player_red.deck_in_duel_index
-
-            decks = [deck.to_array() for deck in red_decks]
-            decks = list(itertools.chain.from_iterable(decks))
-            points = -1 if red_points is None else red_points
-            if red_num_shout_die is None:
-                num_shout_die = -1
-            else:
-                num_shout_die = red_num_shout_die
-            if red_deck_in_duel_index is None:
-                deck_in_duel_index = -1
-            else:
-                deck_in_duel_index = red_deck_in_duel_index
-            others = [points, num_shout_die, deck_in_duel_index]
-            red = decks + others
-            common = [self.duel_index % 2]
-            result = numpy.array([*red, *black, *common])
-            return result.reshape((1, -1))
+        return self.to_array(by_red=by_red)
 
     def process(self, intra_duel_input):
         if isinstance(intra_duel_input, OffenseDeckIndexInput):
