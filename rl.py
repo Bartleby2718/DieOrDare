@@ -238,7 +238,7 @@ class ReinforcementLearningAgent(ComputerPlayer):
         if len(undisclosed_values) == 1:
             undisclosed_value = undisclosed_values[0]
             if len(undisclosed_delegate_values) == 1:
-                deck = AnyDefenseDeck.apply(self.decks)
+                deck = AnyDefenseDeck.apply(decks_opponent)
             else:
                 candidates = [deck for deck in decks_opponent if
                               deck.delegate.value != undisclosed_value]
