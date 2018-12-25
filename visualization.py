@@ -136,24 +136,43 @@ class Plotter(object):
         ax.yaxis.set_major_formatter(percent_formatter)
         plt.minorticks_on()
 
-        games_won = np.cumsum(self.result)
-        winning_percentage = np.true_divide(games_won, self.epoch)
-        plt.plot(self.epoch, winning_percentage, color='r',
-                 label='cum. mov. avg.')
+        plt.plot(self.epoch[window - 1:],
+                 self.moving_average(self.result, window), color='k',
+                 label='{}-epoch won'.format(window))
 
-        winning_percentage_windowed = self.moving_average(self.result, window)
-        plt.plot(self.epoch[window - 1:], winning_percentage_windowed,
-                 color='b', label='{}-epoch mov. avg.'.format(window))
-
-        mean = np.mean(self.result)
-        epoch_min = min(self.epoch)
-        epoch_max = max(self.epoch)
-        plt.hlines(y=mean, xmin=epoch_min, xmax=epoch_max, colors='g',
-                   linestyles='solid', label='avg.', zorder=10)
+        results = (0, 1)  # 0: lost, 1: won
+        num_results = len(results)
+        reasons = {
+            constants.GameResult.ABORTED_BY_WRONG_CHOICE.value: 0,
+            constants.GameResult.FINISHED.value: 1,
+            constants.GameResult.DONE.value: 2
+        }
+        num_reasons = len(reasons)
+        table = np.zeros((num_results, num_reasons, self.data_size))
+        for index, (result, reason) in enumerate(zip(self.result, self.reason)):
+            table[result][reasons.get(reason)][index] = 1
+        plt.plot(self.epoch[window - 1:],
+                 self.moving_average(table[0][0], window), color='r',
+                 label='{}-epoch lost/aborted'.format(window))
+        plt.plot(self.epoch[window - 1:],
+                 self.moving_average(table[0][1], window), color='g',
+                 label='{}-epoch lost/finished'.format(window))
+        plt.plot(self.epoch[window - 1:],
+                 self.moving_average(table[0][2], window), color='b',
+                 label='{}-epoch lost/done'.format(window))
+        plt.plot(self.epoch[window - 1:],
+                 self.moving_average(table[1][0], window), color='c',
+                 label='{}-epoch won/aborted'.format(window))
+        plt.plot(self.epoch[window - 1:],
+                 self.moving_average(table[1][1], window), color='m',
+                 label='{}-epoch won/finished'.format(window))
+        plt.plot(self.epoch[window - 1:],
+                 self.moving_average(table[1][2], window), color='y',
+                 label='{}-epoch won/done'.format(window))
         plt.xlabel('epoch')
-        plt.ylabel('winning percentage')
-        plt.title('epoch vs winning percentage')
-        plt.legend()
+        plt.ylabel('percentage')
+        plt.title('percentage by result/reason')
+        # plt.legend()
         plt.grid(True)
         plt.show()
 
@@ -169,3 +188,4 @@ if __name__ == '__main__':
     plotter.plot_epoch_vs_episode(window=20)
     plotter.plot_epoch_vs_duel(window=20)
     plotter.plot_epoch_vs_winning_percentage_cumulative()
+    plotter.plot_epoch_vs_winning_percentage_moving_average(window=300)
