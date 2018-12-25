@@ -1924,12 +1924,14 @@ def main(num_human_players=1, suppress_output=False, save_all=False,
             message, duration = game.prepare()
             if save_all or save_result:
                 output_handler.save(game.to_json(), message)
-            output_handler.display(game.to_json(), message, duration)
+            if not suppress_output:
+                output_handler.display(game.to_json(), message, duration)
             user_input = game.accept()
             message, duration = game.process(user_input)
             if save_all or save_result:
                 output_handler.save(game.to_json(), message)
-            output_handler.display(game.to_json(), message, duration)
+            if not suppress_output:
+                output_handler.display(game.to_json(), message, duration)
     if save_all:
         output_handler.export_game_states(final_state_only=False)
     elif save_result:
