@@ -472,19 +472,7 @@ class SimpleActionChoiceStrategy(ActionChoiceStrategy):
               points_opponent=None):
         if not ComputerPlayer.undisclosed_values(decks_me):
             return constants.Action.DONE
-        elif round_ == 1:
-            odds_win, odds_draw, odds_lose = ComputerPlayer.get_chances(
-                decks_me, decks_opponent, is_opponent_red)
-            if in_turn:
-                odds_lose += odds_draw
-            else:
-                odds_win += odds_draw
-            if odds_lose > odds_win + .1:
-                if random.random() < .7:
-                    return constants.Action.DIE
-                else:
-                    return constants.Action.DARE
-        elif round_ == 2:
+        elif round_ in (1, 2):
             odds_win, odds_draw, odds_lose = ComputerPlayer.get_chances(
                 decks_me, decks_opponent, is_opponent_red)
             if in_turn:
@@ -495,8 +483,6 @@ class SimpleActionChoiceStrategy(ActionChoiceStrategy):
                 if odds_lose > odds_win + .1:
                     if random.random() < .7:
                         return constants.Action.DIE
-                    else:
-                        return constants.Action.DARE
             return constants.Action.DARE
         elif round_ == 3:
             deck_in_duel_me = next(
@@ -1322,8 +1308,7 @@ class ComputerPlayer(Player):
                     try:
                         unopened_pile.remove(card)
                     except ValueError:
-                        print(unopened_pile)
-                        print(card)
+                        pass
         for card in unopened_pile:
             if card.is_joker() or card.value <= delegate_value_opponent:
                 hidden_cards_opponent.append(card)
